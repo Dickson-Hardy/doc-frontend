@@ -7,7 +7,8 @@ import {
   QrCode, 
   Menu, 
   X,
-  LogOut 
+  LogOut,
+  Settings as SettingsIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -29,6 +30,7 @@ const AdminLayout = () => {
     { name: 'Registrations', href: '/admin/registrations', icon: Users },
     { name: 'Email Logs', href: '/admin/email-logs', icon: Mail },
     { name: 'Scanner', href: '/admin/scanner', icon: QrCode },
+    { name: 'Settings', href: '/admin/settings', icon: SettingsIcon },
   ];
 
   const isActive = (path: string) => {

@@ -39,6 +39,11 @@ const Footer = () => {
                   +234 801 234 5678
                 </a>
               </li>
+              <li>
+                <a href="/verify-payment" className="hover:text-accent transition-colors font-semibold">
+                  🔍 Verify Your Payment
+                </a>
+              </li>
             </ul>
           </div>
         </div>

@@ -3,7 +3,7 @@ import { Mail, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import axios from 'axios';
+import axios from '@/lib/axios';
 
 interface EmailLog {
   id: string;

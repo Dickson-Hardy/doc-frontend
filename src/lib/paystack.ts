@@ -18,10 +18,21 @@ export function initializePaystack(config: PaystackConfig) {
     return null;
   }
 
+  const callbackUrl = `${window.location.origin}/payment/callback`;
+
   const handler = window.PaystackPop.setup({
     ...config,
     key: PAYSTACK_PUBLIC_KEY,
     amount: config.amount * 100, // Convert to kobo
+    callback: (response: any) => {
+      // Redirect to callback page with reference
+      window.location.href = `${callbackUrl}?reference=${response.reference}`;
+    },
+    onClose: () => {
+      if (config.onClose) {
+        config.onClose();
+      }
+    },
   });
 
   return handler;

@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { RegistrationFormData, PriceBreakdown } from '@/types/registration';
 import { calculatePrice } from '@/lib/pricing';
-import { loadPaystackScript, initializePaystack, generatePaymentReference } from '@/lib/paystack';
+import { loadPaystackScript, initializePaystack } from '@/lib/paystack';
 import { registrationApi } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import StepIndicator from '@/components/StepIndicator';
@@ -85,7 +85,7 @@ const RegistrationForm = () => {
       isCmdaMember: false,
       currentLeadershipPost: '',
       previousLeadershipPost: '',
-      hasAbstract: false,
+      hasAbstract: undefined, // User must make explicit choice
       presentationTitle: '',
     },
     mode: 'onChange',
@@ -132,7 +132,6 @@ const RegistrationForm = () => {
   const handleMemberFound = () => {
     setMemberFound(true);
     setCurrentStep(1);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // Validate current step before proceeding
@@ -162,8 +161,18 @@ const RegistrationForm = () => {
         fieldsToValidate = ['dateOfArrival', 'accommodationOption'];
         break;
       case 5:
-        fieldsToValidate = ['hasAbstract'];
-        break;
+        // For abstract step, hasAbstract must be explicitly set (true or false)
+        // No other validation needed - both yes and no are valid
+        const hasAbstractValue = watch('hasAbstract');
+        if (hasAbstractValue === undefined || hasAbstractValue === null) {
+          toast({
+            title: 'Selection Required',
+            description: 'Please select whether you have an abstract to submit.',
+            variant: 'destructive',
+          });
+          return false;
+        }
+        return true; // Valid if choice is made
     }
 
     const isValid = await trigger(fieldsToValidate);
@@ -185,7 +194,6 @@ const RegistrationForm = () => {
       const nextStepId = activeSteps[activeSteps.findIndex(s => s.id === currentStep) + 1]?.id;
       if (nextStepId !== undefined) {
         setCurrentStep(nextStepId);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     }
   };
@@ -194,20 +202,17 @@ const RegistrationForm = () => {
     const prevStepId = activeSteps[activeSteps.findIndex(s => s.id === currentStep) - 1]?.id;
     if (prevStepId !== undefined) {
       setCurrentStep(prevStepId);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
-  const handlePayment = async (registrationData: RegistrationFormData, registrationId: string) => {
+  const handlePayment = async (registrationData: RegistrationFormData, registrationId: string, paymentReference: string) => {
     if (!priceBreakdown) return;
-
-    const reference = generatePaymentReference(registrationData.email);
 
     const paystackConfig = {
       publicKey: '', // Will be set by initializePaystack
       email: registrationData.email,
       amount: priceBreakdown.total,
-      reference,
+      reference: paymentReference, // Use reference from backend
       metadata: {
         custom_fields: [
           {
@@ -269,8 +274,8 @@ const RegistrationForm = () => {
         description: 'Redirecting to payment...',
       });
 
-      // Initialize payment
-      await handlePayment(data, response.registrationId);
+      // Initialize payment with reference from backend
+      await handlePayment(data, response.registrationId, response.reference);
       
     } catch (error) {
       toast({
@@ -328,7 +333,10 @@ const RegistrationForm = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
             <form onSubmit={handleSubmit(onSubmit)}>
-              {renderStep()}
+              {/* Fixed height container to prevent form jumping */}
+              <div className="min-h-[500px]">
+                {renderStep()}
+              </div>
 
               <div className="flex justify-between mt-6">
                 <Button

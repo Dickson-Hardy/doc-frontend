@@ -4,7 +4,7 @@ import { Camera, CheckCircle, XCircle, Upload } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import axios from 'axios';
+import axios from '@/lib/axios';
 
 interface ScanResult {
   registrationId: string;

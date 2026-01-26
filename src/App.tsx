@@ -5,12 +5,16 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import PaymentCallback from "./pages/PaymentCallback";
+import PaymentSuccess from "./pages/PaymentSuccess";
+import VerifyPayment from "./pages/VerifyPayment";
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminLogin from "./pages/admin/Login";
 import Dashboard from "./pages/admin/Dashboard";
 import Registrations from "./pages/admin/Registrations";
 import EmailLogs from "./pages/admin/EmailLogs";
 import Scanner from "./pages/admin/Scanner";
+import Settings from "./pages/admin/Settings";
 
 const queryClient = new QueryClient();
 
@@ -23,6 +27,11 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           
+          {/* Payment Routes */}
+          <Route path="/payment/callback" element={<PaymentCallback />} />
+          <Route path="/payment/success" element={<PaymentSuccess />} />
+          <Route path="/verify-payment" element={<VerifyPayment />} />
+          
           {/* Admin Login */}
           <Route path="/admin/login" element={<AdminLogin />} />
           
@@ -32,6 +41,7 @@ const App = () => (
             <Route path="registrations" element={<Registrations />} />
             <Route path="email-logs" element={<EmailLogs />} />
             <Route path="scanner" element={<Scanner />} />
+            <Route path="settings" element={<Settings />} />
           </Route>
 
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

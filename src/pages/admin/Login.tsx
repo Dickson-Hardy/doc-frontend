@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import axios from 'axios';
+import axios from '@/lib/axios';
 
 const Login = () => {
   const [email, setEmail] = useState('');

@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import axios from 'axios';
+import axios from '@/lib/axios';
 
 interface Registration {
   id: string;
