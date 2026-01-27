@@ -1,6 +1,5 @@
 import { 
   Category, 
-  YearsInPractice, 
   PriceBreakdown, 
   EARLY_REGISTRATION_DEADLINE, 
   LATE_FEE,
@@ -9,7 +8,6 @@ import {
 
 export function calculatePrice(
   category: Category,
-  yearsInPractice?: YearsInPractice,
   currentDate: Date = new Date()
 ): PriceBreakdown {
   const isLateRegistration = currentDate > EARLY_REGISTRATION_DEADLINE;
@@ -22,13 +20,8 @@ export function calculatePrice(
       categoryLabel = 'Student';
       break;
     case 'doctor':
-      if (yearsInPractice === 'less-than-5') {
-        baseFee = BASE_FEES['junior-doctor'];
-        categoryLabel = 'Junior Doctor (Less than 5 years)';
-      } else {
-        baseFee = BASE_FEES['senior-doctor'];
-        categoryLabel = 'Senior Doctor (5 years and above)';
-      }
+      baseFee = BASE_FEES['doctor'];
+      categoryLabel = 'Doctor';
       break;
     case 'doctor-with-spouse':
       baseFee = BASE_FEES['doctor-with-spouse'];

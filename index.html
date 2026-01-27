@@ -29,6 +29,23 @@
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="/cmda-logo.png" />
     <link rel="apple-touch-icon" href="/cmda-logo.png" />
+
+    <!-- Content Security Policy for Paystack and Development -->
+    <meta http-equiv="Content-Security-Policy" content="
+      default-src 'self';
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.paystack.co https://checkout.paystack.com https://api.paystack.co https://paystack.com;
+      script-src-elem 'self' 'unsafe-inline' https://js.paystack.co https://checkout.paystack.com https://api.paystack.co https://paystack.com;
+      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://paystack.com;
+      style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com https://paystack.com;
+      font-src 'self' https://fonts.gstatic.com data:;
+      img-src 'self' data: https: blob:;
+      connect-src 'self' http://localhost:* https://js.paystack.co https://checkout.paystack.com https://api.paystack.co https://paystack.com https://*.vercel.app https://vercel.com https://*.cmdanigeria.net;
+      frame-src 'self' https://checkout.paystack.com https://paystack.com;
+      object-src 'none';
+      base-uri 'self';
+      form-action 'self';
+      upgrade-insecure-requests;
+    " />
   </head>
 
   <body>

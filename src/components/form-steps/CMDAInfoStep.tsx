@@ -3,15 +3,13 @@ import { RegistrationFormData } from '@/types/registration';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 interface CMDAInfoStepProps {
   form: UseFormReturn<RegistrationFormData>;
 }
 
 const CMDAInfoStep = ({ form }: CMDAInfoStepProps) => {
-  const { register, formState: { errors }, setValue, watch } = form;
-  const isCmdaMember = watch('isCmdaMember');
+  const { register, formState: { errors } } = form;
 
   return (
     <div className="form-section animate-scale-in">
@@ -34,26 +32,6 @@ const CMDAInfoStep = ({ form }: CMDAInfoStepProps) => {
           {errors.chapter && (
             <p className="text-sm text-destructive">{errors.chapter.message}</p>
           )}
-        </div>
-
-        <div className="space-y-3">
-          <Label className="text-foreground">
-            Are you a registered CMDA member? <span className="text-destructive">*</span>
-          </Label>
-          <RadioGroup
-            value={isCmdaMember === true ? 'yes' : isCmdaMember === false ? 'no' : ''}
-            onValueChange={(value) => setValue('isCmdaMember', value === 'yes')}
-            className="flex gap-6"
-          >
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="yes" id="member-yes" />
-              <Label htmlFor="member-yes" className="font-normal cursor-pointer">Yes</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="no" id="member-no" />
-              <Label htmlFor="member-no" className="font-normal cursor-pointer">No</Label>
-            </div>
-          </RadioGroup>
         </div>
 
         <div className="space-y-2">

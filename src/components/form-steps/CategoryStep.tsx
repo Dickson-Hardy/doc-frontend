@@ -1,15 +1,8 @@
 import { UseFormReturn } from 'react-hook-form';
-import { RegistrationFormData, Category, YearsInPractice } from '@/types/registration';
+import { RegistrationFormData, Category } from '@/types/registration';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { GraduationCap, Stethoscope, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -30,7 +23,7 @@ const categoryOptions = [
     label: 'Doctor', 
     description: 'Qualified medical practitioners',
     icon: Stethoscope,
-    price: 'From ₦30,000'
+    price: '₦40,000'
   },
   { 
     value: 'doctor-with-spouse' as Category, 
@@ -44,7 +37,6 @@ const categoryOptions = [
 const CategoryStep = ({ form }: CategoryStepProps) => {
   const { register, formState: { errors }, setValue, watch } = form;
   const category = watch('category');
-  const yearsInPractice = watch('yearsInPractice');
 
   const showDoctorFields = category === 'doctor' || category === 'doctor-with-spouse';
 
@@ -113,7 +105,7 @@ const CategoryStep = ({ form }: CategoryStepProps) => {
         </div>
 
         {showDoctorFields && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-border animate-fade-in">
+          <div className="grid grid-cols-1 gap-6 pt-4 border-t border-border animate-fade-in">
             <div className="space-y-2">
               <Label htmlFor="chapterOfGraduation" className="text-foreground">
                 Chapter of Graduation <span className="text-destructive">*</span>
@@ -128,27 +120,6 @@ const CategoryStep = ({ form }: CategoryStepProps) => {
               />
               {errors.chapterOfGraduation && (
                 <p className="text-sm text-destructive">{errors.chapterOfGraduation.message}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="yearsInPractice" className="text-foreground">
-                Years in Practice <span className="text-destructive">*</span>
-              </Label>
-              <Select 
-                value={yearsInPractice} 
-                onValueChange={(value) => setValue('yearsInPractice', value as YearsInPractice)}
-              >
-                <SelectTrigger className="bg-background">
-                  <SelectValue placeholder="Select years in practice" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="less-than-5">Less than 5 years (₦30,000)</SelectItem>
-                  <SelectItem value="5-and-above">5 years and above (₦50,000)</SelectItem>
-                </SelectContent>
-              </Select>
-              {errors.yearsInPractice && (
-                <p className="text-sm text-destructive">{errors.yearsInPractice.message}</p>
               )}
             </div>
           </div>

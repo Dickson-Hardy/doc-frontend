@@ -4,4 +4,5 @@ export { default as CMDAInfoStep } from './CMDAInfoStep';
 export { default as CategoryStep } from './CategoryStep';
 export { default as SpouseDetailsStep } from './SpouseDetailsStep';
 export { default as LogisticsStep } from './LogisticsStep';
+export { default as AccommodationStep } from './AccommodationStep';
 export { default as AbstractStep } from './AbstractStep';

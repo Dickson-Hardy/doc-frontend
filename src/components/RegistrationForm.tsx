@@ -17,6 +17,7 @@ import {
   CategoryStep,
   SpouseDetailsStep,
   LogisticsStep,
+  AccommodationStep,
   AbstractStep,
 } from '@/components/form-steps';
 import { ArrowLeft, ArrowRight, CreditCard, Loader2 } from 'lucide-react';
@@ -28,7 +29,8 @@ const steps = [
   { id: 2, title: 'CMDA Info', description: 'Membership' },
   { id: 3, title: 'Category', description: 'Registration type' },
   { id: 4, title: 'Logistics', description: 'Arrival & stay' },
-  { id: 5, title: 'Abstracts', description: 'Presentations' },
+  { id: 5, title: 'Accommodation', description: 'Room selection' },
+  { id: 6, title: 'Abstracts', description: 'Presentations' },
 ];
 
 // Zod schema for form validation
@@ -41,18 +43,20 @@ const registrationSchema = z.object({
   sex: z.enum(['male', 'female'], { required_error: 'Please select your sex' }),
   phone: z.string().min(1, 'Phone number is required'),
   chapter: z.string().min(1, 'Chapter is required'),
-  isCmdaMember: z.boolean(),
   currentLeadershipPost: z.string().optional(),
   previousLeadershipPost: z.string().optional(),
   category: z.enum(['student', 'doctor', 'doctor-with-spouse'], { required_error: 'Please select a category' }),
   chapterOfGraduation: z.string().optional(),
-  yearsInPractice: z.enum(['less-than-5', '5-and-above']).optional(),
   spouseSurname: z.string().optional(),
   spouseFirstName: z.string().optional(),
   spouseOtherNames: z.string().optional(),
   spouseEmail: z.string().email().optional().or(z.literal('')),
   dateOfArrival: z.date({ required_error: 'Please select your arrival date' }),
-  accommodationOption: z.enum(['on-campus', 'off-campus', 'no-accommodation'], { required_error: 'Please select accommodation' }),
+  accommodationType: z.enum(['covenant-guest-house', 'pg-hostel', 'camp-a', 'temperance', 'student-free']).optional(),
+  covenantRoomType: z.enum(['standard', 'elite', 'mini-suite']).optional(),
+  temperanceRoomType: z.enum(['executive-chalet', 'sapphire']).optional(),
+  roomSharing: z.enum(['shared', 'private']).optional(),
+  roommateName: z.string().optional(),
   hasAbstract: z.boolean(),
   presentationTitle: z.string().optional(),
   abstractFile: z.any().optional(),
@@ -82,7 +86,6 @@ const RegistrationForm = () => {
       otherNames: '',
       phone: '',
       chapter: '',
-      isCmdaMember: false,
       currentLeadershipPost: '',
       previousLeadershipPost: '',
       hasAbstract: undefined, // User must make explicit choice
@@ -93,7 +96,6 @@ const RegistrationForm = () => {
 
   const { watch, trigger, handleSubmit } = form;
   const category = watch('category');
-  const yearsInPractice = watch('yearsInPractice');
 
   // Load Paystack script on mount
   useEffect(() => {
@@ -102,11 +104,11 @@ const RegistrationForm = () => {
     });
   }, []);
 
-  // Calculate price based on category and years
+  // Calculate price based on category
   const priceBreakdown: PriceBreakdown | null = useMemo(() => {
     if (!category) return null;
-    return calculatePrice(category, yearsInPractice);
-  }, [category, yearsInPractice]);
+    return calculatePrice(category);
+  }, [category]);
 
   // Determine if we need to show spouse details step
   const showSpouseStep = category === 'doctor-with-spouse';
@@ -146,21 +148,61 @@ const RegistrationForm = () => {
         fieldsToValidate = ['surname', 'firstName', 'age', 'sex', 'phone'];
         break;
       case 2:
-        fieldsToValidate = ['chapter', 'isCmdaMember'];
+        fieldsToValidate = ['chapter'];
         break;
       case 3:
         fieldsToValidate = ['category'];
         if (category === 'doctor' || category === 'doctor-with-spouse') {
-          fieldsToValidate.push('chapterOfGraduation', 'yearsInPractice');
+          fieldsToValidate.push('chapterOfGraduation');
         }
         break;
       case 3.5:
         fieldsToValidate = ['spouseSurname', 'spouseFirstName', 'spouseEmail'];
         break;
       case 4:
-        fieldsToValidate = ['dateOfArrival', 'accommodationOption'];
+        fieldsToValidate = ['dateOfArrival'];
         break;
       case 5:
+        // Accommodation step - validate based on selection
+        const accommodationType = watch('accommodationType');
+        if (!accommodationType) {
+          toast({
+            title: 'Selection Required',
+            description: 'Please select an accommodation option.',
+            variant: 'destructive',
+          });
+          return false;
+        }
+        
+        // Validate room type for covenant and temperance
+        if (accommodationType === 'covenant-guest-house' && !watch('covenantRoomType')) {
+          toast({
+            title: 'Room Type Required',
+            description: 'Please select a room type for Covenant Guest House.',
+            variant: 'destructive',
+          });
+          return false;
+        }
+        if (accommodationType === 'temperance' && !watch('temperanceRoomType')) {
+          toast({
+            title: 'Room Type Required',
+            description: 'Please select a room type for Temperance.',
+            variant: 'destructive',
+          });
+          return false;
+        }
+        
+        // Validate room sharing for non-student and non-camp-a options
+        if (accommodationType !== 'student-free' && accommodationType !== 'camp-a' && !watch('roomSharing')) {
+          toast({
+            title: 'Room Sharing Required',
+            description: 'Please indicate if you want to share a room.',
+            variant: 'destructive',
+          });
+          return false;
+        }
+        return true;
+      case 6:
         // For abstract step, hasAbstract must be explicitly set (true or false)
         // No other validation needed - both yes and no are valid
         const hasAbstractValue = watch('hasAbstract');
@@ -304,6 +346,8 @@ const RegistrationForm = () => {
       case 4:
         return <LogisticsStep form={form} />;
       case 5:
+        return <AccommodationStep form={form} />;
+      case 6:
         return <AbstractStep form={form} />;
       default:
         return null;

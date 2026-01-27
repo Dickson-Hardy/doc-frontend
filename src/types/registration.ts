@@ -1,8 +1,15 @@
 export type Category = 'student' | 'doctor' | 'doctor-with-spouse';
 
-export type YearsInPractice = 'less-than-5' | '5-and-above';
+export type AccommodationType = 
+  | 'covenant-guest-house' 
+  | 'pg-hostel' 
+  | 'camp-a' 
+  | 'temperance' 
+  | 'student-free';
 
-export type AccommodationOption = 'on-campus' | 'off-campus' | 'no-accommodation';
+export type CovenantRoomType = 'standard' | 'elite' | 'mini-suite';
+export type TemperanceRoomType = 'executive-chalet' | 'sapphire';
+export type RoomSharing = 'shared' | 'private';
 
 export interface MemberData {
   email: string;
@@ -13,12 +20,10 @@ export interface MemberData {
   sex: 'male' | 'female';
   phone: string;
   chapter: string;
-  isCmdaMember: boolean;
   currentLeadershipPost?: string;
   previousLeadershipPost?: string;
   category: Category;
   chapterOfGraduation?: string;
-  yearsInPractice?: YearsInPractice;
 }
 
 export interface SpouseDetails {
@@ -42,14 +47,12 @@ export interface RegistrationFormData {
 
   // Section 2: CMDA Information (auto-populated from database)
   chapter: string;
-  isCmdaMember: boolean;
   currentLeadershipPost?: string;
   previousLeadershipPost?: string;
 
   // Section 3: Category & Professional Details (auto-populated from database)
   category: Category;
   chapterOfGraduation?: string;
-  yearsInPractice?: YearsInPractice;
 
   // Section 3b: Spouse Details (only if doctor-with-spouse)
   spouseSurname?: string;
@@ -59,12 +62,18 @@ export interface RegistrationFormData {
 
   // Section 4: Conference Logistics
   dateOfArrival: Date;
-  accommodationOption: AccommodationOption;
+
+  // Section 4b: Accommodation Details
+  accommodationType?: AccommodationType;
+  covenantRoomType?: CovenantRoomType;
+  temperanceRoomType?: TemperanceRoomType;
+  roomSharing?: RoomSharing;
+  roommateName?: string;
 
   // Section 5: Academic Contribution
   hasAbstract: boolean;
   presentationTitle?: string;
-  abstractFile?: File;
+  abstractFileUrl?: string;
 }
 
 export interface PriceBreakdown {
@@ -80,8 +89,7 @@ export const LATE_FEE = 10000;
 
 export const BASE_FEES: Record<string, number> = {
   student: 11000,
-  'junior-doctor': 30000,
-  'senior-doctor': 50000,
+  'doctor': 40000,
   'doctor-with-spouse': 85000,
 };
 
