@@ -19,9 +19,13 @@ export function calculatePrice(
       baseFee = BASE_FEES.student;
       categoryLabel = 'Student';
       break;
-    case 'doctor':
-      baseFee = BASE_FEES['doctor'];
-      categoryLabel = 'Doctor';
+    case 'junior-doctor':
+      baseFee = BASE_FEES['junior-doctor'];
+      categoryLabel = 'Junior Doctor (0-5 years)';
+      break;
+    case 'senior-doctor':
+      baseFee = BASE_FEES['senior-doctor'];
+      categoryLabel = 'Senior Doctor (5+ years)';
       break;
     case 'doctor-with-spouse':
       baseFee = BASE_FEES['doctor-with-spouse'];

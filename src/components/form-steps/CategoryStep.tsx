@@ -19,11 +19,18 @@ const categoryOptions = [
     price: '₦11,000'
   },
   { 
-    value: 'doctor' as Category, 
-    label: 'Doctor', 
-    description: 'Qualified medical practitioners',
+    value: 'junior-doctor' as Category, 
+    label: 'Junior Doctor', 
+    description: '0-5 years in practice',
     icon: Stethoscope,
-    price: '₦40,000'
+    price: '₦30,000'
+  },
+  { 
+    value: 'senior-doctor' as Category, 
+    label: 'Senior Doctor', 
+    description: '5+ years in practice',
+    icon: Stethoscope,
+    price: '₦50,000'
   },
   { 
     value: 'doctor-with-spouse' as Category, 
@@ -38,7 +45,7 @@ const CategoryStep = ({ form }: CategoryStepProps) => {
   const { register, formState: { errors }, setValue, watch } = form;
   const category = watch('category');
 
-  const showDoctorFields = category === 'doctor' || category === 'doctor-with-spouse';
+  const showDoctorFields = category === 'junior-doctor' || category === 'senior-doctor' || category === 'doctor-with-spouse';
 
   return (
     <div className="form-section animate-scale-in">
@@ -58,7 +65,7 @@ const CategoryStep = ({ form }: CategoryStepProps) => {
           <RadioGroup
             value={category}
             onValueChange={(value) => setValue('category', value as Category)}
-            className="grid grid-cols-1 md:grid-cols-3 gap-4"
+            className="grid grid-cols-1 md:grid-cols-2 gap-4"
           >
             {categoryOptions.map((option) => {
               const Icon = option.icon;

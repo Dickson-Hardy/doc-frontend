@@ -1,4 +1,4 @@
-export type Category = 'student' | 'doctor' | 'doctor-with-spouse';
+export type Category = 'student' | 'junior-doctor' | 'senior-doctor' | 'doctor-with-spouse';
 
 export type AccommodationType = 
   | 'covenant-guest-house' 
@@ -89,7 +89,8 @@ export const LATE_FEE = 10000;
 
 export const BASE_FEES: Record<string, number> = {
   student: 11000,
-  'doctor': 40000,
+  'junior-doctor': 30000,
+  'senior-doctor': 50000,
   'doctor-with-spouse': 85000,
 };
 
