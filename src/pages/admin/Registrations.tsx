@@ -47,7 +47,7 @@ const Registrations = () => {
       if (search) params.append('search', search);
 
       const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/admin/registrations?${params}`
+        `/admin/registrations?${params}`
       );
       setRegistrations(response.data);
     } catch (error) {
@@ -59,7 +59,7 @@ const Registrations = () => {
 
   const handleRequery = async (reference: string) => {
     try {
-      await axios.post(`${import.meta.env.VITE_API_URL}/admin/requery-payment`, {
+      await axios.post('/admin/requery-payment', {
         reference,
       });
       fetchRegistrations();

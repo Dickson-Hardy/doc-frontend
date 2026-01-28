@@ -20,7 +20,7 @@ const Footer = () => {
             <ul className="space-y-2 text-sm text-background/70">
               <li>📅 30th July – 2nd August, 2026</li>
               <li>📍 Covenant University, Ota</li>
-              <li>🎯 Theme: Pursuing Excellence</li>
+              <li>🎯 Theme: Excellence for Impact</li>
             </ul>
           </div>
 

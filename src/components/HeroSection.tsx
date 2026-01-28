@@ -33,7 +33,7 @@ const HeroSection = () => {
           </h1>
 
           <p className="text-base md:text-lg text-accent font-display font-medium tracking-wide uppercase mb-3">
-            Pursuing Excellence in Faith, Conduct and Practice
+            Excellence for Impact
           </p>
           
           <p className="text-lg md:text-xl text-primary-foreground/80 mb-8 max-w-2xl mx-auto">

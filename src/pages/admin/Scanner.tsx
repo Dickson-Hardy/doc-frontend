@@ -100,7 +100,7 @@ const Scanner = () => {
 
     setVerifying(true);
     try {
-      await axios.post(`${import.meta.env.VITE_API_URL}/admin/verify-attendance`, {
+      await axios.post('/admin/verify-attendance', {
         registrationId: result.registrationId,
       });
       setResult({ ...result, verified: true });

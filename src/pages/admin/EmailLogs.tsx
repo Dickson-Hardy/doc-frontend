@@ -26,7 +26,7 @@ const EmailLogs = () => {
   const fetchLogs = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/admin/email-logs`);
+      const response = await axios.get('/admin/email-logs');
       setLogs(response.data);
     } catch (error) {
       console.error('Failed to fetch email logs:', error);

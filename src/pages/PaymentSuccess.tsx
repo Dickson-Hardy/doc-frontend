@@ -149,7 +149,7 @@ const PaymentSuccess = () => {
             </h3>
             <div className="space-y-2 text-gray-700">
               <p><strong>Event:</strong> CMDA National Conference 2026</p>
-              <p><strong>Theme:</strong> Pursuing Excellence in Faith, Conduct and Practice</p>
+              <p><strong>Theme:</strong> Excellence for Impact</p>
               <p><strong>Date:</strong> 30th July – 2nd August, 2026</p>
               <p><strong>Venue:</strong> Covenant University, Ota</p>
             </div>
