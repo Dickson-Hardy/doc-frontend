@@ -295,6 +295,7 @@ const RegistrationTracking = () => {
   };
 
   const abstractCount = getAbstractCount();
+  const accommodationSummary = getAccommodationSummary();
 
   return (
     <div className="space-y-6">
