@@ -9,6 +9,7 @@ interface Stats {
   pending: number;
   abandoned: number;
   revenue: number;
+  splitPayments?: number;
 }
 
 const Dashboard = () => {
@@ -98,20 +99,36 @@ const Dashboard = () => {
         })}
       </div>
 
-      {/* Revenue Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Total Revenue</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-4xl font-bold text-green-600">
-            ₦{(stats?.revenue || 0).toLocaleString()}
-          </div>
-          <p className="text-sm text-gray-600 mt-2">
-            From {stats?.paid || 0} paid registrations
-          </p>
-        </CardContent>
-      </Card>
+      {/* Revenue Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Total Revenue</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-4xl font-bold text-green-600">
+              ₦{(stats?.revenue || 0).toLocaleString()}
+            </div>
+            <p className="text-sm text-gray-600 mt-2">
+              From {stats?.paid || 0} paid registrations
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Split Payments</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-4xl font-bold text-purple-600">
+              {stats?.splitPayments || 0}
+            </div>
+            <p className="text-sm text-gray-600 mt-2">
+              Payments using revenue split code
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };

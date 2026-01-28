@@ -25,6 +25,7 @@ interface Registration {
   createdAt: string;
   paidAt: string;
   attendanceVerified: boolean;
+  splitCode?: string;
 }
 
 const Registrations = () => {
@@ -184,6 +185,7 @@ const Registrations = () => {
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Category</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Amount</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Status</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Split</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Date</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Actions</th>
                   </tr>
@@ -200,6 +202,15 @@ const Registrations = () => {
                         ₦{reg.totalAmount.toLocaleString()}
                       </td>
                       <td className="py-3 px-4">{getStatusBadge(reg.paymentStatus)}</td>
+                      <td className="py-3 px-4">
+                        {reg.splitCode ? (
+                          <Badge variant="outline" className="text-purple-600 border-purple-300">
+                            Split
+                          </Badge>
+                        ) : (
+                          <span className="text-gray-400 text-xs">-</span>
+                        )}
+                      </td>
                       <td className="py-3 px-4 text-sm text-gray-600">
                         {new Date(reg.createdAt).toLocaleDateString()}
                       </td>
