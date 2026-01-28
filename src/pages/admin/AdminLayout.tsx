@@ -8,7 +8,8 @@ import {
   Menu, 
   X,
   LogOut,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  ClipboardList
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -28,6 +29,7 @@ const AdminLayout = () => {
   const navigation = [
     { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
     { name: 'Registrations', href: '/admin/registrations', icon: Users },
+    { name: 'Registration Tracking', href: '/admin/registration-tracking', icon: ClipboardList },
     { name: 'Email Logs', href: '/admin/email-logs', icon: Mail },
     { name: 'Scanner', href: '/admin/scanner', icon: QrCode },
     { name: 'Settings', href: '/admin/settings', icon: SettingsIcon },

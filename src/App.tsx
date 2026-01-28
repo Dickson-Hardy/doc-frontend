@@ -12,6 +12,7 @@ import AdminLayout from "./pages/admin/AdminLayout";
 import AdminLogin from "./pages/admin/Login";
 import Dashboard from "./pages/admin/Dashboard";
 import Registrations from "./pages/admin/Registrations";
+import RegistrationTracking from "./pages/admin/RegistrationTracking";
 import EmailLogs from "./pages/admin/EmailLogs";
 import Scanner from "./pages/admin/Scanner";
 import Settings from "./pages/admin/Settings";
@@ -39,6 +40,7 @@ const App = () => (
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<Dashboard />} />
             <Route path="registrations" element={<Registrations />} />
+            <Route path="registration-tracking" element={<RegistrationTracking />} />
             <Route path="email-logs" element={<EmailLogs />} />
             <Route path="scanner" element={<Scanner />} />
             <Route path="settings" element={<Settings />} />

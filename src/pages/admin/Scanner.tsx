@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { BrowserMultiFormatReader } from '@zxing/library';
-import { Camera, CheckCircle, XCircle, Upload } from 'lucide-react';
+import { Camera, CheckCircle, XCircle, Upload, QrCode } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
