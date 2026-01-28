@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Search, Download, Eye, FileText, Home, Calendar } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Search, Download, Eye, FileText, Home, Calendar, Filter, X, CheckCircle2, Clock, XCircle } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +9,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import {
   Select,
@@ -18,6 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Separator } from '@/components/ui/separator';
 import axios from '@/lib/axios';
 import { useToast } from '@/hooks/use-toast';
 
@@ -182,13 +184,22 @@ const RegistrationTracking = () => {
 
   const downloadDocument = async (url: string, filename: string) => {
     try {
+      toast({
+        title: 'Downloading...',
+        description: 'Please wait while we prepare your document',
+      });
+
       const response = await fetch(url);
+      if (!response.ok) throw new Error('Download failed');
+      
       const blob = await response.blob();
       const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = downloadUrl;
       a.download = filename;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       window.URL.revokeObjectURL(downloadUrl);
 
       toast({
@@ -196,23 +207,69 @@ const RegistrationTracking = () => {
         description: 'Document downloaded successfully',
       });
     } catch (error) {
+      console.error('Download error:', error);
       toast({
         title: 'Error',
-        description: 'Failed to download document',
+        description: 'Failed to download document. Please try again.',
         variant: 'destructive',
       });
     }
   };
 
+  const downloadAllAbstracts = async () => {
+    const abstractRegistrations = registrations.filter(
+      (reg) => reg.hasAbstract && reg.abstractFileUrl
+    );
+
+    if (abstractRegistrations.length === 0) {
+      toast({
+        title: 'No Abstracts',
+        description: 'No abstracts available to download',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    toast({
+      title: 'Downloading Abstracts',
+      description: `Preparing ${abstractRegistrations.length} abstract(s)...`,
+    });
+
+    for (const reg of abstractRegistrations) {
+      await downloadDocument(
+        reg.abstractFileUrl,
+        `abstract-${reg.firstName}-${reg.surname}.pdf`
+      );
+      // Small delay between downloads
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+  };
+
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, any> = {
-      paid: 'default',
-      pending: 'secondary',
-      abandoned: 'destructive',
+    const config: Record<string, { variant: any; icon: any; label: string }> = {
+      paid: { 
+        variant: 'default', 
+        icon: CheckCircle2, 
+        label: 'PAID' 
+      },
+      pending: { 
+        variant: 'secondary', 
+        icon: Clock, 
+        label: 'PENDING' 
+      },
+      abandoned: { 
+        variant: 'destructive', 
+        icon: XCircle, 
+        label: 'ABANDONED' 
+      },
     };
+
+    const { variant, icon: Icon, label } = config[status] || config.pending;
+    
     return (
-      <Badge variant={variants[status] || 'secondary'}>
-        {status.toUpperCase()}
+      <Badge variant={variant} className="flex items-center gap-1 w-fit">
+        <Icon className="w-3 h-3" />
+        {label}
       </Badge>
     );
   };
@@ -233,19 +290,35 @@ const RegistrationTracking = () => {
     return summary;
   };
 
-  const accommodationSummary = getAccommodationSummary();
+  const getAbstractCount = () => {
+    return registrations.filter((reg) => reg.hasAbstract).length;
+  };
+
+  const abstractCount = getAbstractCount();
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Registration Tracking</h1>
-          <p className="text-gray-600 mt-2">Detailed view of all registrations</p>
+          <p className="text-gray-600 mt-2">
+            Comprehensive view of all conference registrations with detailed information
+          </p>
         </div>
-        <Button onClick={exportToCSV} className="bg-green-600 hover:bg-green-700">
-          <Download className="w-4 h-4 mr-2" />
-          Export Full Data
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            onClick={downloadAllAbstracts} 
+            variant="outline"
+            disabled={abstractCount === 0}
+          >
+            <FileText className="w-4 h-4 mr-2" />
+            Download Abstracts ({abstractCount})
+          </Button>
+          <Button onClick={exportToCSV} className="bg-green-600 hover:bg-green-700">
+            <Download className="w-4 h-4 mr-2" />
+            Export CSV
+          </Button>
+        </div>
       </div>
 
       {/* Accommodation Summary */}
