@@ -19,6 +19,7 @@ import {
   LogisticsStep,
   AccommodationStep,
   AbstractStep,
+  ReviewStep,
 } from '@/components/form-steps';
 import { ArrowLeft, ArrowRight, CreditCard, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -31,6 +32,7 @@ const steps = [
   { id: 4, title: 'Logistics', description: 'Arrival & stay' },
   { id: 5, title: 'Accommodation', description: 'Room selection' },
   { id: 6, title: 'Abstracts', description: 'Presentations' },
+  { id: 7, title: 'Review', description: 'Confirm details' },
 ];
 
 // Zod schema for form validation
@@ -349,6 +351,8 @@ const RegistrationForm = () => {
         return <AccommodationStep form={form} />;
       case 6:
         return <AbstractStep form={form} />;
+      case 7:
+        return <ReviewStep form={form} totalAmount={priceBreakdown?.total || 0} />;
       default:
         return null;
     }

@@ -99,15 +99,30 @@ const AccommodationStep = ({ form }: AccommodationStepProps) => {
 
           {/* Option 3: Camp A */}
           <Card className="p-4 hover:border-primary transition-colors">
-            <div className="flex items-start gap-3">
-              <RadioGroupItem value="camp-a" id="camp-a" className="mt-1" />
-              <div className="flex-1">
-                <label htmlFor="camp-a" className="font-semibold text-foreground cursor-pointer">
-                  Option 3: Budget Option (10–15 minutes walk)
-                </label>
-                <p className="text-sm text-muted-foreground mt-1">Camp A – Approx. 1km</p>
-                <p className="text-sm text-foreground mt-1">Standard Bed – ₦9,500 / night</p>
+            <div className="space-y-3">
+              <div className="flex items-start gap-3">
+                <RadioGroupItem value="camp-a" id="camp-a" className="mt-1" />
+                <div className="flex-1">
+                  <label htmlFor="camp-a" className="font-semibold text-foreground cursor-pointer">
+                    Option 3: Budget Option (10–15 minutes walk)
+                  </label>
+                  <p className="text-sm text-muted-foreground mt-1">Camp A – Approx. 1km</p>
+                  <p className="text-sm text-foreground mt-1">Standard Bed – ₦9,500 / night</p>
+                </div>
               </div>
+              {accommodationType === 'camp-a' && (
+                <div className="ml-7 space-y-3">
+                  <Label className="text-sm font-semibold">Room Pairing Preference (Optional)</Label>
+                  <Input
+                    placeholder="Enter full name of person you want to share with"
+                    {...register('roommateName')}
+                    className="bg-background"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    If you have someone you want to share with, enter their full name. If not, leave blank and we will pair you.
+                  </p>
+                </div>
+              )}
             </div>
           </Card>
 
@@ -120,7 +135,7 @@ const AccommodationStep = ({ form }: AccommodationStepProps) => {
                   <label htmlFor="temperance" className="font-semibold text-foreground cursor-pointer">
                     Option 4: Premium & Quiet (Short drive)
                   </label>
-                  <p className="text-sm text-muted-foreground mt-1">Temperance – Approx. 3km</p>
+                  <p className="text-sm text-muted-foreground mt-1">Temperance (Bells University Guest House) – Approx. 3km</p>
                 </div>
               </div>
               {accommodationType === 'temperance' && (
@@ -168,7 +183,7 @@ const AccommodationStep = ({ form }: AccommodationStepProps) => {
         )}
       </div>
 
-      {/* Room Sharing Option (Not for student free accommodation) */}
+      {/* Room Sharing Option (Not for student free accommodation or camp-a) */}
       {accommodationType && accommodationType !== 'student-free' && accommodationType !== 'camp-a' && (
         <div className="space-y-3">
           <Label className="text-base font-semibold">
