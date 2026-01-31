@@ -11,7 +11,9 @@ interface ReviewStepProps {
 }
 
 const ReviewStep = ({ form, totalAmount }: ReviewStepProps) => {
-  const formData = form.getValues();
+const formData = form.getValues();
+
+
 
   const formatDate = (date: Date | string) => {
     if (!date) return 'Not specified';

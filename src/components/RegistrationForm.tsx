@@ -47,7 +47,7 @@ const registrationSchema = z.object({
   chapter: z.string().min(1, 'Chapter is required'),
   currentLeadershipPost: z.string().optional(),
   previousLeadershipPost: z.string().optional(),
-  category: z.enum(['student', 'doctor', 'doctor-with-spouse'], { required_error: 'Please select a category' }),
+  category: z.enum(['student', 'junior-doctor', 'senior-doctor', 'doctor-with-spouse'], { required_error: 'Please select a category' }),
   chapterOfGraduation: z.string().optional(),
   spouseSurname: z.string().optional(),
   spouseFirstName: z.string().optional(),
