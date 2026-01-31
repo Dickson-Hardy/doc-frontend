@@ -43,9 +43,20 @@ export const memberApi = {
 export const registrationApi = {
   // Submit registration
   submit: async (data: RegistrationFormData) => {
+    // Convert Date to ISO string for backend
+    const payload: any = {
+      ...data,
+      dateOfArrival: data.dateOfArrival instanceof Date 
+        ? data.dateOfArrival.toISOString() 
+        : data.dateOfArrival,
+    };
+    
+    // Remove abstractFile from payload (it's already uploaded and we have the URL)
+    delete payload.abstractFile;
+    
     return await fetchApi<{ reference: string; registrationId: string }>('/registrations', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
   },
 
