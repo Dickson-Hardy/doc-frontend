@@ -62,6 +62,11 @@ export const registrationApi = {
 
   // Verify payment
   verifyPayment: async (reference: string) => {
-    return await fetchApi<{ status: string; data: any }>(`/registrations/verify-payment/${reference}`);
+    return await fetchApi<{ status: string; message: string; data: any }>(`/registrations/verify-payment/${reference}`);
+  },
+  
+  // Check registration status by email
+  checkRegistration: async (email: string) => {
+    return await fetchApi<{ exists: boolean; status?: string; registrationId?: string; paymentReference?: string }>(`/registrations/check/${email}`);
   },
 };

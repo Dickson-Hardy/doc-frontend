@@ -58,14 +58,41 @@ const Registrations = () => {
     }
   };
 
-  const handleRequery = async (reference: string) => {
+  const handleResendEmail = async (registrationId: string, email: string) => {
+    if (!confirm(`Resend confirmation email to ${email}?`)) {
+      return;
+    }
+    
     try {
-      await axios.post('/admin/requery-payment', {
+      setLoading(true);
+      await axios.post(`/admin/resend-email/${registrationId}`);
+      alert('✅ Confirmation email resent successfully!');
+    } catch (error: any) {
+      console.error('Failed to resend email:', error);
+      alert(`❌ Failed to resend email: ${error.response?.data?.message || error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+    try {
+      setLoading(true);
+      const response = await axios.post('/admin/requery-payment', {
         reference,
       });
-      fetchRegistrations();
-    } catch (error) {
+      
+      if (response.data.status === 'success') {
+        // Show success message
+        alert(`✅ ${response.data.message}`);
+        // Refresh the list
+        await fetchRegistrations();
+      } else {
+        alert(`❌ ${response.data.message}`);
+      }
+    } catch (error: any) {
       console.error('Failed to requery payment:', error);
+      alert(`❌ Failed to requery payment: ${error.response?.data?.message || error.message}`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -215,16 +242,37 @@ const Registrations = () => {
                         {new Date(reg.createdAt).toLocaleDateString()}
                       </td>
                       <td className="py-3 px-4">
-                        {reg.paymentStatus === 'pending' && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleRequery(reg.paymentReference)}
-                          >
-                            <RefreshCw className="w-3 h-3 mr-1" />
-                            Requery
-                          </Button>
-                        )}
+                        <div className="flex gap-2">
+                          {reg.paymentStatus === 'pending' && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleRequery(reg.paymentReference, reg.id)}
+                              disabled={loading}
+                              title="Verify payment status with Paystack"
+                            >
+                              <RefreshCw className={`w-3 h-3 mr-1 ${loading ? 'animate-spin' : ''}`} />
+                              Requery
+                            </Button>
+                          )}
+                          {reg.paymentStatus === 'paid' && (
+                            <>
+                              <span className="text-green-600 text-sm flex items-center">
+                                ✓ Verified
+                              </span>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleResendEmail(reg.id, reg.email)}
+                                disabled={loading}
+                                title="Resend confirmation email"
+                                className="text-blue-600 hover:text-blue-700"
+                              >
+                                Resend Email
+                              </Button>
+                            </>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}

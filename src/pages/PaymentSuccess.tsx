@@ -26,7 +26,7 @@ const PaymentSuccess = () => {
 
   const verifyPayment = async (reference: string) => {
     try {
-      const response = await axios.post('/payment/verify', { reference });
+      const response = await axios.get(`/registrations/verify-payment/${reference}`);
       
       if (response.data.status === 'success') {
         setStatus('success');

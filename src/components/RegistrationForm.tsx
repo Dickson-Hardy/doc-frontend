@@ -154,7 +154,7 @@ const RegistrationForm = () => {
         break;
       case 3:
         fieldsToValidate = ['category'];
-        if (category === 'doctor' || category === 'doctor-with-spouse') {
+        if (category === 'junior-doctor' || category === 'senior-doctor' || category === 'doctor-with-spouse') {
           fieldsToValidate.push('chapterOfGraduation');
         }
         break;
@@ -278,12 +278,8 @@ const RegistrationForm = () => {
       },
       onSuccess: async (ref: string) => {
         try {
-          await registrationApi.verifyPayment(ref);
-          toast({
-            title: 'Payment Successful!',
-            description: 'Your registration is complete. Check your email for confirmation.',
-          });
-          // Redirect or show success page
+          // Redirect to success page instead of verifying here
+          window.location.href = `/payment/success?reference=${ref}`;
         } catch (error) {
           toast({
             title: 'Payment Verification Failed',
