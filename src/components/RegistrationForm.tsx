@@ -23,6 +23,7 @@ import {
 } from '@/components/form-steps';
 import { ArrowLeft, ArrowRight, CreditCard, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 const steps = [
   { id: 0, title: 'Email Lookup', description: 'Find your profile' },
@@ -78,6 +79,7 @@ const RegistrationForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [memberFound, setMemberFound] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const form = useForm<RegistrationFormData>({
     resolver: zodResolver(registrationSchema),
@@ -365,9 +367,22 @@ const RegistrationForm = () => {
           <h2 className="text-2xl md:text-3xl font-display font-bold text-foreground mb-2">
             Conference Registration
           </h2>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground mb-4">
             Complete the form below to register for the CMDA Nigeria Doctors National Conference 2026
           </p>
+          
+          {/* Resume Payment Button */}
+          <div className="flex justify-center">
+            <Button
+              type="button"
+              onClick={() => navigate('/resume-payment')}
+              variant="outline"
+              className="gap-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+            >
+              <CreditCard className="w-4 h-4" />
+              Already Registered? Complete Payment
+            </Button>
+          </div>
         </div>
 
         <DeadlineNotice />
