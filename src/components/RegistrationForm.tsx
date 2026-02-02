@@ -194,8 +194,8 @@ const RegistrationForm = () => {
           return false;
         }
         
-        // Validate room sharing for non-student and non-camp-a options
-        if (accommodationType !== 'student-free' && accommodationType !== 'camp-a' && !watch('roomSharing')) {
+        // Validate room sharing for non-student, non-camp-a, and non-no-accommodation options
+        if (accommodationType !== 'student-free' && accommodationType !== 'camp-a' && accommodationType !== 'no-accommodation' && !watch('roomSharing')) {
           toast({
             title: 'Room Sharing Required',
             description: 'Please indicate if you want to share a room.',

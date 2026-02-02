@@ -177,14 +177,29 @@ const AccommodationStep = ({ form }: AccommodationStepProps) => {
               </div>
             </Card>
           )}
+
+          {/* Option 6: No Accommodation Needed */}
+          <Card className="p-4 hover:border-primary transition-colors border-gray-200 bg-gray-50">
+            <div className="flex items-start gap-3">
+              <RadioGroupItem value="no-accommodation" id="no-accommodation" className="mt-1" />
+              <div className="flex-1">
+                <label htmlFor="no-accommodation" className="font-semibold text-foreground cursor-pointer">
+                  {isStudent ? 'Option 6' : 'Option 5'}: No Accommodation Needed
+                </label>
+                <p className="text-sm text-muted-foreground mt-1">
+                  I will arrange my own accommodation (e.g., staying in Lagos or nearby)
+                </p>
+              </div>
+            </div>
+          </Card>
         </RadioGroup>
         {errors.accommodationType && (
           <p className="text-sm text-destructive">{errors.accommodationType.message}</p>
         )}
       </div>
 
-      {/* Room Sharing Option (Not for student free accommodation or camp-a) */}
-      {accommodationType && accommodationType !== 'student-free' && accommodationType !== 'camp-a' && (
+      {/* Room Sharing Option (Not for student free accommodation, camp-a, or no-accommodation) */}
+      {accommodationType && accommodationType !== 'student-free' && accommodationType !== 'camp-a' && accommodationType !== 'no-accommodation' && (
         <div className="space-y-3">
           <Label className="text-base font-semibold">
             Room Sharing <span className="text-destructive">*</span>

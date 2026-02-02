@@ -5,7 +5,8 @@ export type AccommodationType =
   | 'pg-hostel' 
   | 'camp-a' 
   | 'temperance' 
-  | 'student-free';
+  | 'student-free'
+  | 'no-accommodation';
 
 export type CovenantRoomType = 'standard' | 'elite' | 'mini-suite';
 export type TemperanceRoomType = 'executive-chalet' | 'sapphire';

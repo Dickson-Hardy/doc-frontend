@@ -46,13 +46,15 @@ const formData = form.getValues();
         return `Temperance (Bells University) - ${formData.temperanceRoomType?.replace('-', ' ').toUpperCase()}`;
       case 'student-free':
         return 'Student Accommodation (Free)';
+      case 'no-accommodation':
+        return 'No Accommodation Needed (Own Arrangement)';
       default:
         return 'Not selected';
     }
   };
 
   const getRoomSharingLabel = () => {
-    if (formData.accommodationType === 'student-free') return 'N/A';
+    if (formData.accommodationType === 'student-free' || formData.accommodationType === 'no-accommodation') return 'N/A';
     if (formData.accommodationType === 'camp-a') {
       return formData.roommateName ? `Pairing with: ${formData.roommateName}` : 'Auto-pairing';
     }
