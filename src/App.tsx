@@ -8,6 +8,7 @@ import NotFound from "./pages/NotFound";
 import PaymentCallback from "./pages/PaymentCallback";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import VerifyPayment from "./pages/VerifyPayment";
+import ResumePayment from "./pages/ResumePayment";
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminLogin from "./pages/admin/Login";
 import Dashboard from "./pages/admin/Dashboard";
@@ -32,6 +33,7 @@ const App = () => (
           <Route path="/payment/callback" element={<PaymentCallback />} />
           <Route path="/payment/success" element={<PaymentSuccess />} />
           <Route path="/verify-payment" element={<VerifyPayment />} />
+          <Route path="/resume-payment" element={<ResumePayment />} />
           
           {/* Admin Login */}
           <Route path="/admin/login" element={<AdminLogin />} />
