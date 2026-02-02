@@ -74,6 +74,8 @@ const Registrations = () => {
       setLoading(false);
     }
   };
+
+  const handleRequery = async (reference: string, registrationId: string) => {
     try {
       setLoading(true);
       const response = await axios.post('/admin/requery-payment', {
