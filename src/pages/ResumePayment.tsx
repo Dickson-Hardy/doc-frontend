@@ -60,23 +60,36 @@ const ResumePayment = () => {
         if (response.data.status === 'paid') {
           setError('Your registration is already paid. Check your email for confirmation.');
         } else if (response.data.status === 'pending') {
-          // Fetch full registration details
-          const regResponse = await axios.get(`/admin/registrations`);
-          const reg = regResponse.data.find((r: any) => r.id === response.data.registrationId);
+          // Use the data from check endpoint directly
+          setRegistration({
+            registrationId: response.data.registrationId,
+            email: email.trim(),
+            firstName: '', // Will be filled from backend
+            surname: '', // Will be filled from backend
+            category: '', // Will be filled from backend
+            totalAmount: 0, // Will be filled from backend
+            paymentReference: response.data.paymentReference,
+            createdAt: new Date().toISOString(),
+          });
           
-          if (reg) {
-            setRegistration({
-              registrationId: reg.id,
-              email: reg.email,
-              firstName: reg.firstName,
-              surname: reg.surname,
-              category: reg.category,
-              totalAmount: reg.totalAmount,
-              paymentReference: reg.paymentReference,
-              createdAt: reg.createdAt,
-            });
-          } else {
-            setError('Registration found but details could not be loaded. Please contact support.');
+          // Fetch full details from a public endpoint
+          try {
+            const detailsResponse = await axios.get(`/registrations/${response.data.registrationId}`);
+            if (detailsResponse.data) {
+              setRegistration({
+                registrationId: detailsResponse.data.id,
+                email: detailsResponse.data.email,
+                firstName: detailsResponse.data.firstName,
+                surname: detailsResponse.data.surname,
+                category: detailsResponse.data.category,
+                totalAmount: detailsResponse.data.totalAmount,
+                paymentReference: detailsResponse.data.paymentReference,
+                createdAt: detailsResponse.data.createdAt,
+              });
+            }
+          } catch (detailsError) {
+            console.error('Failed to fetch details:', detailsError);
+            // Continue with basic info from check endpoint
           }
         } else {
           setError(`Registration status: ${response.data.status}. Please contact support.`);
