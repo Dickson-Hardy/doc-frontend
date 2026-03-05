@@ -94,13 +94,6 @@ const Login = () => {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Logging in...' : 'Login'}
             </Button>
-
-            <div className="text-center text-sm text-gray-600 mt-4">
-              <p>Default credentials:</p>
-              <p className="font-mono text-xs mt-1">
-                admin@cmda.org / Admin@2026!
-              </p>
-            </div>
           </form>
         </CardContent>
       </Card>
