@@ -1,10 +1,9 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { RegistrationFormData, PriceBreakdown } from '@/types/registration';
 import { calculatePrice } from '@/lib/pricing';
-import { loadPaystackScript, initializePaystack } from '@/lib/paystack';
 import { registrationApi } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import StepIndicator from '@/components/StepIndicator';
@@ -100,13 +99,6 @@ const RegistrationForm = () => {
 
   const { watch, trigger, handleSubmit } = form;
   const category = watch('category');
-
-  // Load Paystack script on mount
-  useEffect(() => {
-    loadPaystackScript().catch((error) => {
-      console.error('Failed to load Paystack:', error);
-    });
-  }, []);
 
   // Calculate price based on category
   const priceBreakdown: PriceBreakdown | null = useMemo(() => {
@@ -254,11 +246,10 @@ const RegistrationForm = () => {
   const handlePayment = async (registrationData: RegistrationFormData, registrationId: string, paymentReference: string) => {
     if (!priceBreakdown) return;
 
-    const paystackConfig = {
-      publicKey: '', // Will be set by initializePaystack
+    const response = await registrationApi.initializePayment({
       email: registrationData.email,
       amount: priceBreakdown.total,
-      reference: paymentReference, // Use reference from backend
+      reference: paymentReference,
       metadata: {
         custom_fields: [
           {
@@ -278,30 +269,14 @@ const RegistrationForm = () => {
           },
         ],
       },
-      onSuccess: async (ref: string) => {
-        try {
-          // Redirect to success page instead of verifying here
-          window.location.href = `/payment/success?reference=${ref}`;
-        } catch (error) {
-          toast({
-            title: 'Payment Verification Failed',
-            description: 'Please contact support with your payment reference.',
-            variant: 'destructive',
-          });
-        }
-      },
-      onClose: () => {
-        toast({
-          title: 'Payment Cancelled',
-          description: 'You can complete payment later from your email.',
-        });
-      },
-    };
+    });
 
-    const handler = initializePaystack(paystackConfig);
-    if (handler) {
-      handler.openIframe();
+    const authorizationUrl = response?.data?.authorization_url;
+    if (!authorizationUrl) {
+      throw new Error('Payment initialization failed: no authorization URL returned');
     }
+
+    window.location.href = authorizationUrl;
   };
 
   const onSubmit = async (data: RegistrationFormData) => {

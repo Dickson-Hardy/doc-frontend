@@ -8,8 +8,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useNavigate } from 'react-router-dom';
 import axios from '@/lib/axios';
 import { useToast } from '@/hooks/use-toast';
-import { initializePaystack, loadPaystackScript } from '@/lib/paystack';
-import { useEffect } from 'react';
 
 interface PendingRegistration {
   registrationId: string;
@@ -30,12 +28,6 @@ const ResumePayment = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [registration, setRegistration] = useState<PendingRegistration | null>(null);
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    loadPaystackScript().catch((error) => {
-      console.error('Failed to load Paystack:', error);
-    });
-  }, []);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,8 +103,7 @@ const ResumePayment = () => {
     setIsProcessing(true);
 
     try {
-      const paystackConfig = {
-        publicKey: '', // Will be set by initializePaystack
+      const response = await axios.post('/payment/initialize', {
         email: registration.email,
         amount: registration.totalAmount,
         reference: registration.paymentReference,
@@ -135,28 +126,14 @@ const ResumePayment = () => {
             },
           ],
         },
-        onSuccess: (ref: string) => {
-          toast({
-            title: 'Payment Initiated!',
-            description: 'Redirecting to verify payment...',
-          });
-          window.location.href = `/payment/success?reference=${ref}`;
-        },
-        onClose: () => {
-          setIsProcessing(false);
-          toast({
-            title: 'Payment Cancelled',
-            description: 'You can try again anytime.',
-          });
-        },
-      };
+      });
 
-      const handler = initializePaystack(paystackConfig);
-      if (handler) {
-        handler.openIframe();
-      } else {
-        throw new Error('Failed to initialize payment');
+      const authorizationUrl = response?.data?.data?.authorization_url;
+      if (!authorizationUrl) {
+        throw new Error('Payment initialization failed: no authorization URL returned');
       }
+
+      window.location.href = authorizationUrl;
     } catch (error: any) {
       console.error('Payment error:', error);
       toast({

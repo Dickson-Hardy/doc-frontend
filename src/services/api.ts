@@ -69,4 +69,31 @@ export const registrationApi = {
   checkRegistration: async (email: string) => {
     return await fetchApi<{ exists: boolean; status?: string; registrationId?: string; paymentReference?: string }>(`/registrations/check/${email}`);
   },
+
+  // Initialize payment on backend so split code is applied server-side
+  initializePayment: async (data: {
+    email: string;
+    amount: number;
+    reference: string;
+    metadata?: {
+      custom_fields?: Array<{
+        display_name: string;
+        variable_name: string;
+        value: string;
+      }>;
+    };
+  }) => {
+    return await fetchApi<{
+      status: boolean;
+      message: string;
+      data: {
+        authorization_url: string;
+        access_code: string;
+        reference: string;
+      };
+    }>('/payment/initialize', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
 };
