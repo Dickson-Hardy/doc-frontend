@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import axios from '@/lib/axios';
+import { formatAdminDateTime, formatAdminNumber } from '@/lib/admin-format';
 
 interface EmailLog {
   id: string;
@@ -68,7 +69,7 @@ const EmailLogs = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Mail className="w-5 h-5" />
-            Email History ({logs.length})
+            Email History ({formatAdminNumber(logs.length)})
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -101,7 +102,7 @@ const EmailLogs = () => {
                     )}
                     <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
                       <span>
-                        {new Date(log.sentAt).toLocaleString()}
+                        {formatAdminDateTime(log.sentAt)}
                       </span>
                       {log.registrationId && (
                         <span className="font-mono">

@@ -12,6 +12,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import axios from '@/lib/axios';
+import { PaymentStatusBadge } from '@/components/admin/PaymentStatusBadge';
+import {
+  formatAdminCategory,
+  formatAdminCurrency,
+  formatAdminDate,
+  formatAdminNumber,
+} from '@/lib/admin-format';
 
 interface Registration {
   id: string;
@@ -98,28 +105,15 @@ const Registrations = () => {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, any> = {
-      paid: 'default',
-      pending: 'secondary',
-      abandoned: 'destructive',
-    };
-    return (
-      <Badge variant={variants[status] || 'secondary'}>
-        {status.toUpperCase()}
-      </Badge>
-    );
-  };
-
   const exportToCSV = () => {
     const headers = ['Name', 'Email', 'Category', 'Amount', 'Status', 'Date'];
     const rows = registrations.map((reg) => [
       `${reg.firstName} ${reg.surname}`,
       reg.email,
-      reg.category,
-      reg.totalAmount,
+      formatAdminCategory(reg.category),
+      formatAdminCurrency(reg.totalAmount),
       reg.paymentStatus,
-      new Date(reg.createdAt).toLocaleDateString(),
+      formatAdminDate(reg.createdAt),
     ]);
 
     const csv = [headers, ...rows].map((row) => row.join(',')).join('\n');
@@ -176,8 +170,10 @@ const Registrations = () => {
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
                 <SelectItem value="student">Student</SelectItem>
-                <SelectItem value="doctor">Doctor</SelectItem>
+                <SelectItem value="junior-doctor">Junior Doctor</SelectItem>
+                <SelectItem value="senior-doctor">Senior Doctor</SelectItem>
                 <SelectItem value="doctor-with-spouse">Doctor with Spouse</SelectItem>
+                <SelectItem value="doctor">Doctor (Legacy)</SelectItem>
               </SelectContent>
             </Select>
             <Button onClick={fetchRegistrations} className="w-full">
@@ -192,7 +188,7 @@ const Registrations = () => {
       <Card>
         <CardHeader>
           <CardTitle>
-            {registrations.length} Registration{registrations.length !== 1 ? 's' : ''}
+            {formatAdminNumber(registrations.length)} Registration{registrations.length !== 1 ? 's' : ''}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -226,11 +222,13 @@ const Registrations = () => {
                         {reg.firstName} {reg.surname}
                       </td>
                       <td className="py-3 px-4 text-sm text-gray-600">{reg.email}</td>
-                      <td className="py-3 px-4 text-sm">{reg.category}</td>
+                      <td className="py-3 px-4 text-sm">{formatAdminCategory(reg.category)}</td>
                       <td className="py-3 px-4 font-medium">
-                        ₦{reg.totalAmount.toLocaleString()}
+                        {formatAdminCurrency(reg.totalAmount)}
                       </td>
-                      <td className="py-3 px-4">{getStatusBadge(reg.paymentStatus)}</td>
+                      <td className="py-3 px-4">
+                        <PaymentStatusBadge status={reg.paymentStatus} />
+                      </td>
                       <td className="py-3 px-4">
                         {reg.splitCode ? (
                           <Badge variant="outline" className="text-purple-600 border-purple-300">
@@ -241,7 +239,7 @@ const Registrations = () => {
                         )}
                       </td>
                       <td className="py-3 px-4 text-sm text-gray-600">
-                        {new Date(reg.createdAt).toLocaleDateString()}
+                        {formatAdminDate(reg.createdAt)}
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex gap-2">

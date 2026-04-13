@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Search, Download, Eye, FileText, Home, Calendar, Filter, X, CheckCircle2, Clock, XCircle } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Search, Download, Eye, FileText, Home, Calendar } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,7 +9,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from '@/components/ui/dialog';
 import {
   Select,
@@ -19,9 +18,17 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Separator } from '@/components/ui/separator';
 import axios from '@/lib/axios';
 import { useToast } from '@/hooks/use-toast';
+import { PaymentStatusBadge } from '@/components/admin/PaymentStatusBadge';
+import {
+  formatAccommodation,
+  formatAdminCategory,
+  formatAdminCurrency,
+  formatAdminDate,
+  formatAdminDateTime,
+  formatAdminNumber,
+} from '@/lib/admin-format';
 
 interface Registration {
   id: string;
@@ -89,7 +96,27 @@ const RegistrationTracking = () => {
 
       // Filter by accommodation type if needed
       if (accommodationFilter !== 'all') {
-        data = data.filter((reg: Registration) => reg.accommodationType === accommodationFilter);
+        data = data.filter((reg: Registration) => {
+          if (accommodationFilter === 'covenant') {
+            return ['covenant', 'covenant-guest-house', 'pg-hostel', 'camp-a'].includes(
+              reg.accommodationType,
+            );
+          }
+
+          if (accommodationFilter === 'temperance') {
+            return reg.accommodationType === 'temperance';
+          }
+
+          if (accommodationFilter === 'none') {
+            return (
+              !reg.accommodationType ||
+              reg.accommodationType === 'no-accommodation' ||
+              reg.accommodationType === 'student-free'
+            );
+          }
+
+          return reg.accommodationType === accommodationFilter;
+        });
       }
 
       setRegistrations(data);
@@ -146,25 +173,25 @@ const RegistrationTracking = () => {
       reg.age,
       reg.sex,
       reg.chapter,
-      reg.category,
+      formatAdminCategory(reg.category),
       reg.currentLeadershipPost || '-',
       reg.previousLeadershipPost || '-',
-      reg.dateOfArrival,
-      reg.accommodationType || '-',
+      formatAdminDate(reg.dateOfArrival),
+      formatAccommodation(reg.accommodationType),
       reg.covenantRoomType || reg.temperanceRoomType || '-',
       reg.roomSharing || '-',
       reg.roommateName || '-',
       reg.hasAbstract ? 'Yes' : 'No',
       reg.presentationTitle || '-',
-      reg.baseFee,
-      reg.lateFee,
-      reg.totalAmount,
+      formatAdminCurrency(reg.baseFee),
+      formatAdminCurrency(reg.lateFee),
+      formatAdminCurrency(reg.totalAmount),
       reg.paymentStatus,
       reg.paymentReference,
       reg.splitCode || '-',
-      reg.paidAt ? new Date(reg.paidAt).toLocaleString() : '-',
+      formatAdminDateTime(reg.paidAt),
       reg.attendanceVerified ? 'Yes' : 'No',
-      new Date(reg.createdAt).toLocaleString(),
+      formatAdminDateTime(reg.createdAt),
     ]);
 
     const csv = [headers, ...rows].map((row) => row.map(cell => `"${cell}"`).join(',')).join('\n');
@@ -245,35 +272,6 @@ const RegistrationTracking = () => {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    const config: Record<string, { variant: any; icon: any; label: string }> = {
-      paid: { 
-        variant: 'default', 
-        icon: CheckCircle2, 
-        label: 'PAID' 
-      },
-      pending: { 
-        variant: 'secondary', 
-        icon: Clock, 
-        label: 'PENDING' 
-      },
-      abandoned: { 
-        variant: 'destructive', 
-        icon: XCircle, 
-        label: 'ABANDONED' 
-      },
-    };
-
-    const { variant, icon: Icon, label } = config[status] || config.pending;
-    
-    return (
-      <Badge variant={variant} className="flex items-center gap-1 w-fit">
-        <Icon className="w-3 h-3" />
-        {label}
-      </Badge>
-    );
-  };
-
   const getAccommodationSummary = () => {
     const summary = {
       covenant: 0,
@@ -282,7 +280,9 @@ const RegistrationTracking = () => {
     };
 
     registrations.forEach((reg) => {
-      if (reg.accommodationType === 'covenant') summary.covenant++;
+      if (['covenant', 'covenant-guest-house', 'pg-hostel', 'camp-a'].includes(reg.accommodationType)) {
+        summary.covenant++;
+      }
       else if (reg.accommodationType === 'temperance') summary.temperance++;
       else summary.none++;
     });
@@ -332,7 +332,7 @@ const RegistrationTracking = () => {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-blue-600">
-              {accommodationSummary.covenant}
+              {formatAdminNumber(accommodationSummary.covenant)}
             </div>
             <p className="text-xs text-gray-500 mt-1">registrations</p>
           </CardContent>
@@ -345,7 +345,7 @@ const RegistrationTracking = () => {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-purple-600">
-              {accommodationSummary.temperance}
+              {formatAdminNumber(accommodationSummary.temperance)}
             </div>
             <p className="text-xs text-gray-500 mt-1">registrations</p>
           </CardContent>
@@ -358,7 +358,7 @@ const RegistrationTracking = () => {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-gray-600">
-              {accommodationSummary.none}
+              {formatAdminNumber(accommodationSummary.none)}
             </div>
             <p className="text-xs text-gray-500 mt-1">registrations</p>
           </CardContent>
@@ -425,7 +425,7 @@ const RegistrationTracking = () => {
       <Card>
         <CardHeader>
           <CardTitle>
-            {registrations.length} Registration{registrations.length !== 1 ? 's' : ''}
+            {formatAdminNumber(registrations.length)} Registration{registrations.length !== 1 ? 's' : ''}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -459,17 +459,19 @@ const RegistrationTracking = () => {
                       </td>
                       <td className="py-3 px-4 text-sm text-gray-600">{reg.email}</td>
                       <td className="py-3 px-4 text-sm">{reg.phone}</td>
-                      <td className="py-3 px-4 text-sm">{reg.category}</td>
+                      <td className="py-3 px-4 text-sm">{formatAdminCategory(reg.category)}</td>
                       <td className="py-3 px-4">
                         {reg.accommodationType ? (
                           <Badge variant="outline">
-                            {reg.accommodationType === 'covenant' ? 'Covenant' : 'Temperance'}
+                            {formatAccommodation(reg.accommodationType)}
                           </Badge>
                         ) : (
                           <span className="text-gray-400 text-xs">None</span>
                         )}
                       </td>
-                      <td className="py-3 px-4">{getStatusBadge(reg.paymentStatus)}</td>
+                      <td className="py-3 px-4">
+                        <PaymentStatusBadge status={reg.paymentStatus} />
+                      </td>
                       <td className="py-3 px-4">
                         <Button
                           size="sm"
@@ -532,7 +534,7 @@ const RegistrationTracking = () => {
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-600">Category</label>
-                    <p className="text-base">{selectedRegistration.category}</p>
+                    <p className="text-base">{formatAdminCategory(selectedRegistration.category)}</p>
                   </div>
                 </div>
 
@@ -583,16 +585,14 @@ const RegistrationTracking = () => {
                     <label className="text-sm font-medium text-gray-600">Date of Arrival</label>
                     <p className="text-base flex items-center gap-2">
                       <Calendar className="w-4 h-4" />
-                      {new Date(selectedRegistration.dateOfArrival).toLocaleDateString()}
+                      {formatAdminDate(selectedRegistration.dateOfArrival)}
                     </p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-600">Accommodation Type</label>
                     <p className="text-base flex items-center gap-2">
                       <Home className="w-4 h-4" />
-                      {selectedRegistration.accommodationType ? (
-                        selectedRegistration.accommodationType === 'covenant' ? 'Covenant University' : 'Temperance Hotel'
-                      ) : 'No Accommodation'}
+                      {formatAccommodation(selectedRegistration.accommodationType)}
                     </p>
                   </div>
                   {selectedRegistration.accommodationType && (
@@ -622,7 +622,9 @@ const RegistrationTracking = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-medium text-gray-600">Payment Status</label>
-                    <div className="mt-1">{getStatusBadge(selectedRegistration.paymentStatus)}</div>
+                    <div className="mt-1">
+                      <PaymentStatusBadge status={selectedRegistration.paymentStatus} />
+                    </div>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-600">Payment Reference</label>
@@ -630,22 +632,22 @@ const RegistrationTracking = () => {
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-600">Base Fee</label>
-                    <p className="text-base">₦{selectedRegistration.baseFee.toLocaleString()}</p>
+                    <p className="text-base">{formatAdminCurrency(selectedRegistration.baseFee)}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-600">Late Fee</label>
-                    <p className="text-base">₦{selectedRegistration.lateFee.toLocaleString()}</p>
+                    <p className="text-base">{formatAdminCurrency(selectedRegistration.lateFee)}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-600">Total Amount</label>
                     <p className="text-lg font-bold text-green-600">
-                      ₦{selectedRegistration.totalAmount.toLocaleString()}
+                      {formatAdminCurrency(selectedRegistration.totalAmount)}
                     </p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-600">Paid At</label>
                     <p className="text-base">
-                      {selectedRegistration.paidAt ? new Date(selectedRegistration.paidAt).toLocaleString() : '-'}
+                      {formatAdminDateTime(selectedRegistration.paidAt)}
                     </p>
                   </div>
                   {selectedRegistration.splitCode && (
@@ -668,7 +670,7 @@ const RegistrationTracking = () => {
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-600">Registered At</label>
-                    <p className="text-base">{new Date(selectedRegistration.createdAt).toLocaleString()}</p>
+                    <p className="text-base">{formatAdminDateTime(selectedRegistration.createdAt)}</p>
                   </div>
                 </div>
               </TabsContent>
