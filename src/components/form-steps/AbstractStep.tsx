@@ -15,12 +15,12 @@ const AbstractStep = ({ form }: AbstractStepProps) => {
   const hasAbstract = watch('hasAbstract');
 
   const handleUploadComplete = (result: UploadResult) => {
-    setValue('abstractFileUrl', result.url);
+    setValue('abstractFileUrl', result.url, { shouldValidate: true });
   };
 
   const handleUploadError = (error: string) => {
     console.error('Upload error:', error);
-    setValue('abstractFileUrl', '');
+    setValue('abstractFileUrl', '', { shouldValidate: true });
   };
 
   return (
@@ -37,7 +37,15 @@ const AbstractStep = ({ form }: AbstractStepProps) => {
           </Label>
           <RadioGroup
             value={hasAbstract === true ? 'yes' : hasAbstract === false ? 'no' : ''}
-            onValueChange={(value) => setValue('hasAbstract', value === 'yes')}
+            onValueChange={(value) => {
+              const selectedHasAbstract = value === 'yes';
+              setValue('hasAbstract', selectedHasAbstract, { shouldValidate: true });
+
+              if (!selectedHasAbstract) {
+                setValue('presentationTitle', '', { shouldValidate: true });
+                setValue('abstractFileUrl', '', { shouldValidate: true });
+              }
+            }}
             className="flex gap-6"
           >
             <div className="flex items-center space-x-2">

@@ -291,7 +291,7 @@ const RegistrationTracking = () => {
   };
 
   const getAbstractCount = () => {
-    return registrations.filter((reg) => reg.hasAbstract).length;
+    return registrations.filter((reg) => reg.hasAbstract && reg.abstractFileUrl).length;
   };
 
   const abstractCount = getAbstractCount();
@@ -313,7 +313,7 @@ const RegistrationTracking = () => {
             disabled={abstractCount === 0}
           >
             <FileText className="w-4 h-4 mr-2" />
-            Download Abstracts ({abstractCount})
+            Download Abstract Files ({abstractCount})
           </Button>
           <Button onClick={exportToCSV} className="bg-green-600 hover:bg-green-700">
             <Download className="w-4 h-4 mr-2" />
@@ -711,6 +711,15 @@ const RegistrationTracking = () => {
                               Download Abstract
                             </Button>
                           </div>
+                        </div>
+                      )}
+
+                      {!selectedRegistration.abstractFileUrl && (
+                        <div>
+                          <label className="text-sm font-medium text-gray-600">Abstract Document</label>
+                          <p className="text-sm text-amber-700 mt-1">
+                            This registration has a presentation topic but no uploaded file.
+                          </p>
                         </div>
                       )}
                     </>

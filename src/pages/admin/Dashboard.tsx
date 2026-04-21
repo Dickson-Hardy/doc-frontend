@@ -3,7 +3,6 @@ import {
   Activity,
   Clock,
   DollarSign,
-  Sparkles,
   TrendingUp,
   UserX,
   Users,
@@ -171,47 +170,47 @@ const Dashboard = () => {
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <div className="h-12 w-12 animate-spin rounded-full border-4 border-purple-100 border-t-purple-600" />
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-slate-200 border-t-slate-700" />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-900 to-purple-900 p-6 text-white shadow-xl">
-        <div className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-fuchsia-400/20 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-20 left-16 h-52 w-52 rounded-full bg-sky-400/20 blur-3xl" />
-
-        <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium">
-              <Sparkles className="h-3.5 w-3.5" />
-              Conference Control Center
-            </div>
-            <h1 className="mt-4 text-3xl font-bold">Dashboard</h1>
-            <p className="mt-2 max-w-2xl text-sm text-indigo-100">
-              Track registrations, payment conversion, and revenue performance in real time.
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Conference Admin
+            </p>
+            <h1 className="mt-2 text-3xl font-bold text-slate-900">Dashboard</h1>
+            <p className="mt-2 max-w-2xl text-sm text-slate-600">
+              Real-time overview of registration volume, payment conversion, and revenue.
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:min-w-[330px]">
-            <div className="rounded-xl border border-white/20 bg-white/10 p-3">
-              <p className="text-xs text-indigo-100">Revenue</p>
-              <p className="mt-1 text-lg font-semibold">{formatAdminCurrency(totalRevenue)}</p>
+          <div className="grid grid-cols-2 gap-3 sm:min-w-[340px]">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <p className="text-xs text-slate-600">Revenue</p>
+              <p className="mt-1 text-lg font-semibold text-slate-900">
+                {formatAdminCurrency(totalRevenue)}
+              </p>
             </div>
-            <div className="rounded-xl border border-white/20 bg-white/10 p-3">
-              <p className="text-xs text-indigo-100">Conversion</p>
-              <p className="mt-1 text-lg font-semibold">{paidPercentage.toFixed(1)}%</p>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <p className="text-xs text-slate-600">Conversion</p>
+              <p className="mt-1 text-lg font-semibold text-slate-900">
+                {paidPercentage.toFixed(1)}%
+              </p>
             </div>
-            <div className="rounded-xl border border-white/20 bg-white/10 p-3">
-              <p className="text-xs text-indigo-100">Pending</p>
-              <p className="mt-1 text-lg font-semibold">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <p className="text-xs text-slate-600">Pending</p>
+              <p className="mt-1 text-lg font-semibold text-slate-900">
                 {formatAdminNumber(pendingRegistrations)}
               </p>
             </div>
-            <div className="rounded-xl border border-white/20 bg-white/10 p-3">
-              <p className="text-xs text-indigo-100">Abandoned</p>
-              <p className="mt-1 text-lg font-semibold">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <p className="text-xs text-slate-600">Abandoned</p>
+              <p className="mt-1 text-lg font-semibold text-slate-900">
                 {formatAdminNumber(abandonedRegistrations)}
               </p>
             </div>
@@ -225,10 +224,7 @@ const Dashboard = () => {
           const barWidth = card.percentage === 0 ? 0 : Math.max(6, card.percentage);
 
           return (
-            <Card
-              key={card.title}
-              className="border border-slate-200/80 bg-white/95 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
-            >
+            <Card key={card.title} className="border border-slate-200 bg-white shadow-sm">
               <CardContent className="p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -256,7 +252,7 @@ const Dashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <Card className="border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-teal-50 shadow-sm">
+        <Card className="border border-slate-200 bg-white shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center justify-between text-slate-900">
               Revenue Pulse
@@ -264,7 +260,7 @@ const Dashboard = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-5">
-            <div className="rounded-xl border border-emerald-200 bg-white/80 p-4">
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
                 Total Revenue
               </p>
@@ -303,7 +299,7 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        <Card className="border border-slate-200 shadow-sm">
+        <Card className="border border-slate-200 bg-white shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center justify-between text-slate-900">
               Payment Funnel

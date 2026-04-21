@@ -61,16 +61,38 @@ const registrationSchema = z.object({
   roommateName: z.string().optional(),
   hasAbstract: z.boolean(),
   presentationTitle: z.string().optional(),
+  abstractFileUrl: z.string().optional(),
   abstractFile: z.any().optional(),
-}).refine((data) => {
+}).superRefine((data, ctx) => {
   // If doctor-with-spouse, spouse details are required
   if (data.category === 'doctor-with-spouse') {
-    return data.spouseSurname && data.spouseFirstName && data.spouseEmail;
+    if (!data.spouseSurname || !data.spouseFirstName || !data.spouseEmail) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Spouse details are required for Doctor with Spouse package',
+        path: ['spouseSurname'],
+      });
+    }
   }
-  return true;
-}, {
-  message: 'Spouse details are required for Doctor with Spouse package',
-  path: ['spouseSurname'],
+
+  // If abstract is selected, both title and uploaded file URL are required
+  if (data.hasAbstract) {
+    if (!data.presentationTitle?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Presentation title is required',
+        path: ['presentationTitle'],
+      });
+    }
+
+    if (!data.abstractFileUrl?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Please upload your abstract file',
+        path: ['abstractFileUrl'],
+      });
+    }
+  }
 });
 
 const RegistrationForm = () => {
@@ -93,6 +115,7 @@ const RegistrationForm = () => {
       previousLeadershipPost: '',
       hasAbstract: undefined, // User must make explicit choice
       presentationTitle: '',
+      abstractFileUrl: '',
     },
     mode: 'onChange',
   });
@@ -210,6 +233,30 @@ const RegistrationForm = () => {
           });
           return false;
         }
+
+        if (hasAbstractValue === true) {
+          const title = watch('presentationTitle');
+          const abstractFileUrl = watch('abstractFileUrl');
+
+          if (!title || !title.trim()) {
+            toast({
+              title: 'Presentation Title Required',
+              description: 'Please enter your presentation title.',
+              variant: 'destructive',
+            });
+            return false;
+          }
+
+          if (!abstractFileUrl || !abstractFileUrl.trim()) {
+            toast({
+              title: 'Abstract File Required',
+              description: 'Please upload your abstract file before continuing.',
+              variant: 'destructive',
+            });
+            return false;
+          }
+        }
+
         return true; // Valid if choice is made
     }
 
