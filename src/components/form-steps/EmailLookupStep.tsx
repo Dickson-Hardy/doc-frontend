@@ -39,6 +39,7 @@ const EmailLookupStep = ({ form, onMemberFound }: EmailLookupStepProps) => {
         setValue('surname', memberData.surname);
         setValue('firstName', memberData.firstName);
         setValue('otherNames', memberData.otherNames || '');
+        setValue('state', memberData.state || '');
         setValue('age', memberData.age);
         setValue('sex', memberData.sex);
         setValue('phone', memberData.phone);

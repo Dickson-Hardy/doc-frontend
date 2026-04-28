@@ -17,6 +17,7 @@ export interface MemberData {
   surname: string;
   firstName: string;
   otherNames?: string;
+  state?: string;
   age: number;
   sex: 'male' | 'female';
   phone: string;
@@ -48,6 +49,7 @@ export interface RegistrationFormData {
 
   // Section 2: CMDA Information (auto-populated from database)
   chapter: string;
+  state?: string;
   currentLeadershipPost?: string;
   previousLeadershipPost?: string;
 

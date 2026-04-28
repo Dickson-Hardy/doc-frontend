@@ -40,6 +40,7 @@ interface Registration {
   sex: string;
   phone: string;
   chapter: string;
+  state: string;
   currentLeadershipPost: string;
   previousLeadershipPost: string;
   category: string;
@@ -142,9 +143,10 @@ const RegistrationTracking = () => {
       'Name',
       'Email',
       'Phone',
+      'Chapter',
+      'State',
       'Age',
       'Sex',
-      'Chapter',
       'Category',
       'Current Post',
       'Previous Post',
@@ -170,9 +172,10 @@ const RegistrationTracking = () => {
       `${reg.firstName} ${reg.surname} ${reg.otherNames || ''}`.trim(),
       reg.email,
       reg.phone,
+      reg.chapter,
+      reg.state || '-',
       reg.age,
       reg.sex,
-      reg.chapter,
       formatAdminCategory(reg.category),
       reg.currentLeadershipPost || '-',
       reg.previousLeadershipPost || '-',
@@ -473,14 +476,29 @@ const RegistrationTracking = () => {
                         <PaymentStatusBadge status={reg.paymentStatus} />
                       </td>
                       <td className="py-3 px-4">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => viewDetails(reg)}
-                        >
-                          <Eye className="w-3 h-3 mr-1" />
-                          View
-                        </Button>
+                        <div className="flex gap-2">
+                          {reg.hasAbstract && reg.abstractFileUrl && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => downloadDocument(
+                                reg.abstractFileUrl,
+                                `abstract-${reg.firstName}-${reg.surname}.pdf`
+                              )}
+                            >
+                              <FileText className="w-3 h-3 mr-1" />
+                              Download
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => viewDetails(reg)}
+                          >
+                            <Eye className="w-3 h-3 mr-1" />
+                            View
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}

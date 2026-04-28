@@ -18,6 +18,7 @@ import {
   formatAdminCurrency,
   formatAdminDate,
   formatAdminNumber,
+  formatAccommodation,
 } from '@/lib/admin-format';
 
 interface Registration {
@@ -25,6 +26,10 @@ interface Registration {
   email: string;
   firstName: string;
   surname: string;
+  phone: string;
+  chapter: string;
+  state?: string;
+  accommodationType?: string;
   category: string;
   totalAmount: number;
   paymentStatus: string;
@@ -106,10 +111,14 @@ const Registrations = () => {
   };
 
   const exportToCSV = () => {
-    const headers = ['Name', 'Email', 'Category', 'Amount', 'Status', 'Date'];
+    const headers = ['Name', 'Email', 'Phone', 'Chapter', 'State', 'Accommodation', 'Category', 'Amount', 'Status', 'Date'];
     const rows = registrations.map((reg) => [
       `${reg.firstName} ${reg.surname}`,
       reg.email,
+      reg.phone || '-',
+      reg.chapter || '-',
+      reg.state || '-',
+      formatAccommodation(reg.accommodationType || '-'),
       formatAdminCategory(reg.category),
       formatAdminCurrency(reg.totalAmount),
       reg.paymentStatus,
