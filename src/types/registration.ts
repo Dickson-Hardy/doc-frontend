@@ -87,7 +87,7 @@ export interface PriceBreakdown {
   isLateRegistration: boolean;
 }
 
-export const EARLY_REGISTRATION_DEADLINE = new Date('2026-04-30T23:59:59');
+export const EARLY_REGISTRATION_DEADLINE = new Date('2026-05-18T23:59:59');
 export const LATE_FEE = 10000;
 
 export const BASE_FEES: Record<string, number> = {
