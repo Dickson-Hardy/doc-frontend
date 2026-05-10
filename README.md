@@ -22,7 +22,7 @@ This is a full-stack conference registration application with:
    - Junior Doctor (<5 years): ₦30,000
    - Senior Doctor (5+ years): ₦50,000
    - Doctor with Spouse: ₦85,000
-   - Late fee: ₦10,000 (after April 30, 2026)
+   - Late fee: ₦10,000 (after May 18, 2026)
 5. **Spouse Details**: Additional form for Doctor with Spouse package
 6. **Logistics**: Arrival date and accommodation preferences
 7. **Abstract Submission**: Optional presentation submission

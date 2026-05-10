@@ -1,11 +1,11 @@
 import { Clock, AlertTriangle, CheckCircle } from 'lucide-react';
-import { EARLY_REGISTRATION_DEADLINE } from '@/types/registration';
+import { EARLY_REGISTRATION_DEADLINE, LATE_FEE } from '@/types/registration';
 import { formatNaira } from '@/lib/pricing';
 
 const DeadlineNotice = () => {
   const now = new Date();
   const isLateRegistration = now > EARLY_REGISTRATION_DEADLINE;
-  
+
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('en-NG', {
       day: 'numeric',
@@ -22,7 +22,7 @@ const DeadlineNotice = () => {
           <div>
             <h4 className="font-semibold text-destructive">Late Registration Period</h4>
             <p className="text-sm text-destructive/80 mt-1">
-              The early registration deadline has passed. A late fee of {formatNaira(10000)} will be applied to all registrations.
+              The early registration deadline has passed. A late fee of {formatNaira(LATE_FEE)} will be applied to all registrations.
             </p>
           </div>
         </div>
@@ -37,7 +37,7 @@ const DeadlineNotice = () => {
         <div>
           <h4 className="font-semibold text-success">Early Bird Registration Open!</h4>
           <p className="text-sm text-muted-foreground mt-1">
-            Register before <strong className="text-foreground">{formatDate(EARLY_REGISTRATION_DEADLINE)}</strong> to avoid the ₦10,000 late registration fee.
+            Register by <strong className="text-foreground">{formatDate(EARLY_REGISTRATION_DEADLINE)}</strong> to avoid the {formatNaira(LATE_FEE)} late registration fee.
           </p>
           <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
             <Clock className="w-4 h-4" />

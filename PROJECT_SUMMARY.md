@@ -47,7 +47,7 @@ Complete full-stack conference registration system for CMDA Nigeria Doctors Nati
    - Junior Doctor (<5 years): ₦30,000
    - Senior Doctor (5+ years): ₦50,000
    - Doctor with Spouse: ₦85,000
-   - Late fee: ₦10,000 (after April 30, 2026)
+   - Late fee: ₦10,000 (after May 18, 2026)
    - Real-time calculation displayed
 
 3. **Doctor with Spouse Package**
