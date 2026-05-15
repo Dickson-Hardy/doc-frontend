@@ -4,19 +4,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import axios from '@/lib/axios';
-import { formatAdminCurrency, formatAdminNumber } from '@/lib/admin-format';
+import { formatAdminCurrency, formatAdminNumber, formatAdminCategory } from '@/lib/admin-format';
 
-interface AuditResult {
+interface PricingResult {
   registrationId: string;
   name: string;
   email: string;
+  category: string;
+  expectedPrice: number;
   dbAmount: number;
   paystackAmount: number | null;
-  dbStatus: string;
-  paystackStatus: string;
   paidAt: string | null;
+  createdAt: string;
   discrepancies: string[];
-  healthy: boolean;
+  correctPrice: boolean;
 }
 
 interface PaystackStatus {
@@ -27,12 +28,14 @@ interface PaystackStatus {
 
 const PaymentAudit = () => {
   const [paystackStatus, setPaystackStatus] = useState<PaystackStatus | null>(null);
-  const [auditResults, setAuditResults] = useState<AuditResult[]>([]);
+  const [auditResults, setAuditResults] = useState<PricingResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [auditing, setAuditing] = useState(false);
+  const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
     fetchPaystackStatus();
+    runAudit();
   }, []);
 
   const fetchPaystackStatus = async () => {
@@ -48,7 +51,7 @@ const PaymentAudit = () => {
     setAuditing(true);
     setLoading(true);
     try {
-      const response = await axios.get('/admin/payment-audit');
+      const response = await axios.get('/admin/pricing-audit');
       setAuditResults(response.data);
     } catch (error) {
       console.error('Failed to run audit:', error);
@@ -60,14 +63,15 @@ const PaymentAudit = () => {
 
   const exportToCSV = () => {
     if (auditResults.length === 0) return;
-    const headers = ['Name', 'Email', 'DB Amount', 'Paystack Amount', 'DB Status', 'Paystack Status', 'Paid At', 'Discrepancies'];
+    const headers = ['Name', 'Email', 'Category', 'Expected Price', 'DB Amount', 'Paystack Amount', 'Registered', 'Paid At', 'Issues'];
     const rows = auditResults.map((r) => [
       r.name,
       r.email,
+      r.category,
+      r.expectedPrice,
       r.dbAmount,
       r.paystackAmount ?? 'N/A',
-      r.dbStatus,
-      r.paystackStatus,
+      new Date(r.createdAt).toLocaleDateString('en-NG'),
       r.paidAt || '-',
       r.discrepancies.join('; ') || 'None',
     ]);
@@ -76,24 +80,25 @@ const PaymentAudit = () => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `payment-audit-${new Date().toISOString()}.csv`;
+    a.download = `pricing-audit-${new Date().toISOString()}.csv`;
     a.click();
   };
 
-  const healthyCount = auditResults.filter(r => r.healthy).length;
-  const unhealthyCount = auditResults.filter(r => !r.healthy).length;
+  const correctCount = auditResults.filter(r => r.correctPrice).length;
+  const wrongCount = auditResults.filter(r => !r.correctPrice).length;
+  const displayResults = showAll ? auditResults : auditResults.filter(r => !r.correctPrice);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Payment Audit</h1>
-          <p className="text-gray-600 mt-2">Cross-check registrations against Paystack</p>
+          <h1 className="text-3xl font-bold text-gray-900">Pricing Audit</h1>
+          <p className="text-gray-600 mt-2">Verify every registration was charged the correct price</p>
         </div>
         <div className="flex gap-2">
           <Button onClick={runAudit} disabled={auditing}>
             <RefreshCw className={`w-4 h-4 mr-2 ${auditing ? 'animate-spin' : ''}`} />
-            {auditing ? 'Auditing...' : 'Run Audit'}
+            {auditing ? 'Checking...' : 'Re-check All'}
           </Button>
           <Button onClick={exportToCSV} variant="outline" disabled={auditResults.length === 0}>
             <Download className="w-4 h-4 mr-2" />
@@ -133,12 +138,12 @@ const PaymentAudit = () => {
             <CardContent className="p-5">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-sm font-medium text-slate-500">Total Verified</p>
+                  <p className="text-sm font-medium text-slate-500">Total Paid</p>
                   <p className="mt-1 text-3xl font-bold text-slate-900">{formatAdminNumber(auditResults.length)}</p>
                 </div>
                 <div className="rounded-lg p-2.5 bg-blue-100 text-blue-700">
                   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                   </svg>
                 </div>
               </div>
@@ -148,8 +153,8 @@ const PaymentAudit = () => {
             <CardContent className="p-5">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-sm font-medium text-slate-500">Matching</p>
-                  <p className="mt-1 text-3xl font-bold text-green-600">{formatAdminNumber(healthyCount)}</p>
+                  <p className="text-sm font-medium text-slate-500">Correct Price</p>
+                  <p className="mt-1 text-3xl font-bold text-green-600">{formatAdminNumber(correctCount)}</p>
                 </div>
                 <div className="rounded-lg p-2.5 bg-green-100 text-green-700">
                   <CheckCircle className="h-5 w-5" />
@@ -161,8 +166,8 @@ const PaymentAudit = () => {
             <CardContent className="p-5">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-sm font-medium text-slate-500">Discrepancies</p>
-                  <p className="mt-1 text-3xl font-bold text-red-600">{formatAdminNumber(unhealthyCount)}</p>
+                  <p className="text-sm font-medium text-slate-500">Wrong Price</p>
+                  <p className="mt-1 text-3xl font-bold text-red-600">{formatAdminNumber(wrongCount)}</p>
                 </div>
                 <div className="rounded-lg p-2.5 bg-red-100 text-red-700">
                   <AlertTriangle className="h-5 w-5" />
@@ -173,13 +178,33 @@ const PaymentAudit = () => {
         </div>
       )}
 
+      {/* Toggle */}
+      {auditResults.length > 0 && (
+        <div className="flex gap-2">
+          <Button
+            variant={!showAll ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setShowAll(false)}
+          >
+            Show Wrong Only ({wrongCount})
+          </Button>
+          <Button
+            variant={showAll ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setShowAll(true)}
+          >
+            Show All ({auditResults.length})
+          </Button>
+        </div>
+      )}
+
       {/* Results Table */}
       <Card>
         <CardHeader>
           <CardTitle>
             {auditResults.length > 0
-              ? `${formatAdminNumber(auditResults.length)} Payment${auditResults.length !== 1 ? 's' : ''} Checked`
-              : 'Click "Run Audit" to verify payments against Paystack'}
+              ? `Showing ${displayResults.length} of ${auditResults.length} registrations`
+              : 'Checking prices...'}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -187,9 +212,11 @@ const PaymentAudit = () => {
             <div className="flex justify-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
             </div>
-          ) : auditResults.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              No paid registrations to audit
+          ) : displayResults.length === 0 ? (
+            <div className="text-center py-12">
+              <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
+              <p className="text-lg font-medium text-green-700">All prices are correct!</p>
+              <p className="text-sm text-gray-500 mt-1">Every paid registration was charged the expected amount.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -197,32 +224,31 @@ const PaymentAudit = () => {
                 <thead>
                   <tr className="border-b">
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Name</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Email</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Category</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Expected</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-700">DB Amount</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Paystack Amount</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Paystack Status</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Paid At</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Paystack</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Registered</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Issues</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {auditResults.map((r) => (
-                    <tr key={r.registrationId} className={`border-b hover:bg-gray-50 ${!r.healthy ? 'bg-red-50/30' : ''}`}>
-                      <td className="py-3 px-4 font-medium">{r.name}</td>
-                      <td className="py-3 px-4 text-sm text-gray-600">{r.email}</td>
+                  {displayResults.map((r) => (
+                    <tr key={r.registrationId} className={`border-b hover:bg-gray-50 ${!r.correctPrice ? 'bg-red-50/40' : ''}`}>
+                      <td className="py-3 px-4">
+                        <p className="font-medium">{r.name}</p>
+                        <p className="text-xs text-gray-500">{r.email}</p>
+                      </td>
+                      <td className="py-3 px-4 text-sm">{formatAdminCategory(r.category)}</td>
+                      <td className="py-3 px-4 font-medium text-blue-700">{formatAdminCurrency(r.expectedPrice)}</td>
                       <td className="py-3 px-4 font-medium">{formatAdminCurrency(r.dbAmount)}</td>
                       <td className="py-3 px-4 font-medium">
                         {r.paystackAmount !== null ? formatAdminCurrency(r.paystackAmount) : <span className="text-red-500">Not found</span>}
                       </td>
-                      <td className="py-3 px-4">
-                        <Badge variant={r.paystackStatus === 'success' ? 'default' : 'destructive'}>
-                          {r.paystackStatus}
-                        </Badge>
-                      </td>
                       <td className="py-3 px-4 text-sm text-gray-600">
-                        {r.paidAt ? new Date(r.paidAt).toLocaleDateString('en-NG', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
+                        {new Date(r.createdAt).toLocaleDateString('en-NG', { day: '2-digit', month: 'short', year: 'numeric' })}
                       </td>
-                      <td className="py-3 px-4 max-w-xs">
+                      <td className="py-3 px-4 max-w-md">
                         {r.discrepancies.length > 0 ? (
                           <div className="space-y-1">
                             {r.discrepancies.map((d, idx) => (
@@ -233,7 +259,7 @@ const PaymentAudit = () => {
                             ))}
                           </div>
                         ) : (
-                          <span className="text-xs text-green-600 font-medium">Match</span>
+                          <span className="text-xs text-green-600 font-medium">Correct</span>
                         )}
                       </td>
                     </tr>
