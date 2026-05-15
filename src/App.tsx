@@ -18,6 +18,7 @@ import RegistrationTracking from "./pages/admin/RegistrationTracking";
 import EmailLogs from "./pages/admin/EmailLogs";
 import Scanner from "./pages/admin/Scanner";
 import Settings from "./pages/admin/Settings";
+import PaymentAudit from "./pages/admin/PaymentAudit";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +48,7 @@ const App = () => (
             <Route path="registration-tracking" element={<RegistrationTracking />} />
             <Route path="email-logs" element={<EmailLogs />} />
             <Route path="scanner" element={<Scanner />} />
+            <Route path="payment-audit" element={<PaymentAudit />} />
             <Route path="settings" element={<Settings />} />
           </Route>
 

@@ -10,7 +10,8 @@ import {
   LogOut,
   Settings as SettingsIcon,
   ClipboardList,
-  Heart
+  Heart,
+  ShieldCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -34,6 +35,7 @@ const AdminLayout = () => {
     { name: 'Registration Tracking', href: '/admin/registration-tracking', icon: ClipboardList },
     { name: 'Email Logs', href: '/admin/email-logs', icon: Mail },
     { name: 'Scanner', href: '/admin/scanner', icon: QrCode },
+    { name: 'Payment Audit', href: '/admin/payment-audit', icon: ShieldCheck },
     { name: 'Settings', href: '/admin/settings', icon: SettingsIcon },
   ];
 
