@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react';
-import { Search, RefreshCw, AlertTriangle, Edit2, Save, X } from 'lucide-react';
+import { Search, RefreshCw, AlertTriangle, Edit2, Download, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import axios from '@/lib/axios';
+import { PaymentStatusBadge } from '@/components/admin/PaymentStatusBadge';
 import {
-  formatAdminCategory,
   formatAdminCurrency,
-  formatAdminDate,
+  formatAdminNumber,
+  formatAdminDateTime,
 } from '@/lib/admin-format';
 
 interface Registration {
@@ -33,21 +36,18 @@ interface Registration {
   inconsistencies: string[];
 }
 
-interface EditingState {
-  [key: string]: {
-    spouseFirstName: string;
-    spouseSurname: string;
-    spouseOtherNames: string;
-    spouseEmail: string;
-  };
-}
-
 const SpouseRegistrations = () => {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [editing, setEditing] = useState<EditingState>({});
-  const [saving, setSaving] = useState<string | null>(null);
+  const [editTarget, setEditTarget] = useState<Registration | null>(null);
+  const [editForm, setEditForm] = useState({
+    spouseFirstName: '',
+    spouseSurname: '',
+    spouseOtherNames: '',
+    spouseEmail: '',
+  });
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetchRegistrations();
@@ -65,51 +65,59 @@ const SpouseRegistrations = () => {
     }
   };
 
-  const startEditing = (reg: Registration) => {
-    setEditing(prev => ({
-      ...prev,
-      [reg.id]: {
-        spouseFirstName: reg.spouseFirstName || '',
-        spouseSurname: reg.spouseSurname || '',
-        spouseOtherNames: reg.spouseOtherNames || '',
-        spouseEmail: reg.spouseEmail || '',
-      },
-    }));
-  };
-
-  const cancelEditing = (id: string) => {
-    setEditing(prev => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
+  const openEdit = (reg: Registration) => {
+    setEditTarget(reg);
+    setEditForm({
+      spouseFirstName: reg.spouseFirstName || '',
+      spouseSurname: reg.spouseSurname || '',
+      spouseOtherNames: reg.spouseOtherNames || '',
+      spouseEmail: reg.spouseEmail || '',
     });
   };
 
-  const saveEditing = async (id: string) => {
-    setSaving(id);
+  const closeEdit = () => {
+    setEditTarget(null);
+  };
+
+  const saveEdit = async () => {
+    if (!editTarget) return;
+    setSaving(true);
     try {
-      const updates = editing[id];
-      const response = await axios.post(`/admin/fix-spouse-details/${id}`, updates);
+      const response = await axios.post(`/admin/fix-spouse-details/${editTarget.id}`, editForm);
       setRegistrations(prev =>
-        prev.map(reg => (reg.id === id ? response.data.registration : reg))
+        prev.map(reg => (reg.id === editTarget.id ? response.data.registration : reg))
       );
-      cancelEditing(id);
+      setEditTarget(null);
     } catch (error) {
       console.error('Failed to save spouse details:', error);
       alert('Failed to save changes. Please try again.');
     } finally {
-      setSaving(null);
+      setSaving(false);
     }
   };
 
-  const updateEditField = (id: string, field: string, value: string) => {
-    setEditing(prev => ({
-      ...prev,
-      [id]: {
-        ...prev[id],
-        [field]: value,
-      },
-    }));
+  const exportToCSV = () => {
+    const headers = ['Doctor Name', 'Doctor Email', 'Chapter', 'Sex', 'Spouse Name', 'Spouse Email', 'Amount', 'Status', 'Registered', 'Inconsistencies'];
+    const rows = filteredRegistrations.map((reg) => [
+      `${reg.firstName} ${reg.surname}`,
+      reg.email,
+      reg.chapter,
+      reg.sex,
+      `${reg.spouseFirstName || ''} ${reg.spouseSurname || ''}`.trim() || '-',
+      reg.spouseEmail || '-',
+      reg.totalAmount,
+      reg.paymentStatus,
+      formatAdminDateTime(reg.createdAt),
+      reg.inconsistencies.join('; ') || 'None',
+    ]);
+
+    const csv = [headers, ...rows].map((row) => row.map(cell => `"${cell}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `spouse-registrations-${new Date().toISOString()}.csv`;
+    a.click();
   };
 
   const filteredRegistrations = registrations.filter(reg => {
@@ -129,35 +137,91 @@ const SpouseRegistrations = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Doctor with Spouse Registrations</h1>
-        <p className="text-gray-600 mt-2">Review spouse details and spot inconsistencies</p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Doctor with Spouse Registrations</h1>
+          <p className="text-gray-600 mt-2">Review spouse details and spot inconsistencies</p>
+        </div>
+        <div className="flex gap-2">
+          <Button onClick={fetchRegistrations} variant="outline" disabled={loading}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          <Button onClick={exportToCSV} variant="outline">
+            <Download className="w-4 h-4 mr-2" />
+            Export CSV
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Total Spouse Registrations</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{registrations.length}</p>
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium text-slate-500">Total Spouse Registrations</p>
+                <p className="mt-1 text-3xl font-bold text-slate-900">
+                  {formatAdminNumber(registrations.length)}
+                </p>
+              </div>
+              <div className="rounded-lg p-2.5 bg-blue-100 text-blue-700">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </div>
+            </div>
+            <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
+              <div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-500" style={{ width: '100%' }} />
+            </div>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">With Inconsistencies</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-amber-600">{totalWithInconsistencies}</p>
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium text-slate-500">With Inconsistencies</p>
+                <p className="mt-1 text-3xl font-bold text-amber-600">
+                  {formatAdminNumber(totalWithInconsistencies)}
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  {registrations.length > 0 ? ((totalWithInconsistencies / registrations.length) * 100).toFixed(1) : 0}% of total
+                </p>
+              </div>
+              <div className="rounded-lg p-2.5 bg-amber-100 text-amber-700">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+            </div>
+            <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-amber-500 to-yellow-500"
+                style={{ width: registrations.length > 0 ? `${Math.max(6, (totalWithInconsistencies / registrations.length) * 100)}%` : '0%' }}
+              />
+            </div>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Clean Records</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-green-600">{registrations.length - totalWithInconsistencies}</p>
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium text-slate-500">Clean Records</p>
+                <p className="mt-1 text-3xl font-bold text-green-600">
+                  {formatAdminNumber(registrations.length - totalWithInconsistencies)}
+                </p>
+                <p className="mt-1 text-xs text-slate-500">No issues detected</p>
+              </div>
+              <div className="rounded-lg p-2.5 bg-green-100 text-green-700">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+            </div>
+            <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-green-500"
+                style={{ width: registrations.length > 0 ? `${Math.max(6, ((registrations.length - totalWithInconsistencies) / registrations.length) * 100)}%` : '0%' }}
+              />
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -181,7 +245,7 @@ const SpouseRegistrations = () => {
       <Card>
         <CardHeader>
           <CardTitle>
-            {filteredRegistrations.length} Registration{filteredRegistrations.length !== 1 ? 's' : ''}
+            {formatAdminNumber(filteredRegistrations.length)} Registration{filteredRegistrations.length !== 1 ? 's' : ''}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -199,143 +263,169 @@ const SpouseRegistrations = () => {
                 <thead>
                   <tr className="border-b">
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Doctor</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Doctor Email</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Spouse Name</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Spouse Email</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Amount</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Status</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Inconsistencies</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Issues</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Registered</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredRegistrations.map((reg) => {
-                    const isEditing = editing[reg.id] !== undefined;
-                    return (
-                      <tr key={reg.id} className={`border-b hover:bg-gray-50 ${reg.inconsistencies.length > 0 ? 'bg-amber-50/30' : ''}`}>
-                        <td className="py-3 px-4">
+                  {filteredRegistrations.map((reg) => (
+                    <tr key={reg.id} className={`border-b hover:bg-gray-50 ${reg.inconsistencies.length > 0 ? 'bg-amber-50/50' : ''}`}>
+                      <td className="py-3 px-4">
+                        <div>
+                          <p className="font-medium">{reg.firstName} {reg.surname}</p>
+                          <p className="text-xs text-gray-500">{reg.email}</p>
+                          <p className="text-xs text-gray-400">{reg.chapter} &middot; {reg.sex}</p>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        {(reg.spouseFirstName || reg.spouseSurname) ? (
                           <div>
-                            <p className="font-medium">{reg.firstName} {reg.surname}</p>
-                            <p className="text-xs text-gray-500">{reg.chapter} | {reg.sex}</p>
+                            <p className="font-medium">
+                              {reg.spouseFirstName} {reg.spouseSurname}
+                            </p>
+                            {reg.spouseOtherNames && (
+                              <p className="text-xs text-gray-500">{reg.spouseOtherNames}</p>
+                            )}
                           </div>
-                        </td>
-                        <td className="py-3 px-4 text-sm text-gray-600">{reg.email}</td>
-                        <td className="py-3 px-4">
-                          {isEditing ? (
-                            <div className="space-y-1">
-                              <Input
-                                size="sm"
-                                value={editing[reg.id].spouseFirstName}
-                                onChange={(e) => updateEditField(reg.id, 'spouseFirstName', e.target.value)}
-                                placeholder="First name"
-                                className="h-7 text-sm"
-                              />
-                              <Input
-                                size="sm"
-                                value={editing[reg.id].spouseSurname}
-                                onChange={(e) => updateEditField(reg.id, 'spouseSurname', e.target.value)}
-                                placeholder="Surname"
-                                className="h-7 text-sm"
-                              />
-                              <Input
-                                size="sm"
-                                value={editing[reg.id].spouseOtherNames}
-                                onChange={(e) => updateEditField(reg.id, 'spouseOtherNames', e.target.value)}
-                                placeholder="Other names (optional)"
-                                className="h-7 text-sm"
-                              />
-                            </div>
-                          ) : (
-                            <div>
-                              <p className="font-medium">
-                                {reg.spouseFirstName || '-'} {reg.spouseSurname || ''}
-                              </p>
-                              {reg.spouseOtherNames && (
-                                <p className="text-xs text-gray-500">{reg.spouseOtherNames}</p>
-                              )}
-                            </div>
-                          )}
-                        </td>
-                        <td className="py-3 px-4">
-                          {isEditing ? (
-                            <Input
-                              size="sm"
-                              value={editing[reg.id].spouseEmail}
-                              onChange={(e) => updateEditField(reg.id, 'spouseEmail', e.target.value)}
-                              placeholder="Spouse email"
-                              className="h-7 text-sm"
-                            />
-                          ) : (
-                            <span className="text-sm text-gray-600">{reg.spouseEmail || '-'}</span>
-                          )}
-                        </td>
-                        <td className="py-3 px-4 font-medium">
-                          {formatAdminCurrency(reg.totalAmount)}
-                        </td>
-                        <td className="py-3 px-4">
-                          <Badge variant={reg.paymentStatus === 'paid' ? 'default' : 'secondary'}>
-                            {reg.paymentStatus}
-                          </Badge>
-                        </td>
-                        <td className="py-3 px-4 max-w-xs">
-                          {reg.inconsistencies.length > 0 ? (
-                            <div className="space-y-1">
-                              {reg.inconsistencies.map((issue, idx) => (
-                                <div key={idx} className="flex items-start gap-1 text-xs text-amber-700">
-                                  <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                                  <span>{issue}</span>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <span className="text-xs text-green-600">No issues</span>
-                          )}
-                        </td>
-                        <td className="py-3 px-4">
-                          {isEditing ? (
-                            <div className="flex gap-1">
-                              <Button
-                                size="sm"
-                                variant="default"
-                                onClick={() => saveEditing(reg.id)}
-                                disabled={saving === reg.id}
-                                className="h-7 px-2"
-                              >
-                                <Save className="w-3 h-3 mr-1" />
-                                Save
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => cancelEditing(reg.id)}
-                                disabled={saving === reg.id}
-                                className="h-7 px-2"
-                              >
-                                <X className="w-3 h-3 mr-1" />
-                                Cancel
-                              </Button>
-                            </div>
-                          ) : (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => startEditing(reg)}
-                              className="h-7 px-2"
-                            >
-                              <Edit2 className="w-3 h-3 mr-1" />
-                              Edit
-                            </Button>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                        ) : (
+                          <span className="text-gray-400 text-sm">Not provided</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-sm text-gray-600">
+                        {reg.spouseEmail || <span className="text-gray-400">Not provided</span>}
+                      </td>
+                      <td className="py-3 px-4 font-medium">
+                        {formatAdminCurrency(reg.totalAmount)}
+                      </td>
+                      <td className="py-3 px-4">
+                        <PaymentStatusBadge status={reg.paymentStatus} />
+                      </td>
+                      <td className="py-3 px-4">
+                        {reg.inconsistencies.length > 0 ? (
+                          <div className="space-y-1">
+                            {reg.inconsistencies.map((issue, idx) => (
+                              <div key={idx} className="flex items-start gap-1.5 text-xs text-amber-700 bg-amber-50 rounded px-2 py-1">
+                                <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                                <span>{issue}</span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-green-600 font-medium">Clean</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-sm text-gray-600">
+                        {formatAdminDateTime(reg.createdAt)}
+                      </td>
+                      <td className="py-3 px-4">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => openEdit(reg)}
+                          className="h-8 px-3"
+                        >
+                          <Edit2 className="w-3.5 h-3.5 mr-1.5" />
+                          Edit
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Dialog */}
+      <Dialog open={editTarget !== null} onOpenChange={(open) => !open && closeEdit()}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              Edit Spouse Details
+            </DialogTitle>
+          </DialogHeader>
+          {editTarget && (
+            <div className="space-y-4">
+              <div className="rounded-lg bg-slate-50 p-3 text-sm">
+                <p className="font-medium text-slate-700">{editTarget.firstName} {editTarget.surname}</p>
+                <p className="text-slate-500">{editTarget.email}</p>
+              </div>
+
+              {editTarget.inconsistencies.length > 0 && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                  <p className="text-sm font-medium text-amber-800 mb-2">Detected Issues:</p>
+                  <ul className="space-y-1">
+                    {editTarget.inconsistencies.map((issue, idx) => (
+                      <li key={idx} className="flex items-start gap-1.5 text-xs text-amber-700">
+                        <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                        <span>{issue}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="spouseFirstName">Spouse First Name</Label>
+                  <Input
+                    id="spouseFirstName"
+                    value={editForm.spouseFirstName}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, spouseFirstName: e.target.value }))}
+                    placeholder="First name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="spouseSurname">Spouse Surname</Label>
+                  <Input
+                    id="spouseSurname"
+                    value={editForm.spouseSurname}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, spouseSurname: e.target.value }))}
+                    placeholder="Surname"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="spouseOtherNames">Spouse Other Names <span className="text-gray-400 font-normal">(optional)</span></Label>
+                <Input
+                  id="spouseOtherNames"
+                  value={editForm.spouseOtherNames}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, spouseOtherNames: e.target.value }))}
+                  placeholder="Middle names or other names"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="spouseEmail">Spouse Email</Label>
+                <Input
+                  id="spouseEmail"
+                  type="email"
+                  value={editForm.spouseEmail}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, spouseEmail: e.target.value }))}
+                  placeholder="spouse@example.com"
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={closeEdit} disabled={saving}>
+              <X className="w-4 h-4 mr-2" />
+              Cancel
+            </Button>
+            <Button onClick={saveEdit} disabled={saving}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${saving ? 'animate-spin' : ''}`} />
+              {saving ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
