@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { RefreshCw, CheckCircle, XCircle, AlertTriangle, Download } from 'lucide-react';
+import { RefreshCw, CheckCircle, XCircle, AlertTriangle, Download, Wrench } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -32,6 +32,7 @@ const PaymentAudit = () => {
   const [loading, setLoading] = useState(true);
   const [auditing, setAuditing] = useState(false);
   const [showAll, setShowAll] = useState(false);
+  const [fixingId, setFixingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchPaystackStatus();
@@ -82,6 +83,18 @@ const PaymentAudit = () => {
     a.href = url;
     a.download = `pricing-audit-${new Date().toISOString()}.csv`;
     a.click();
+  };
+
+  const fixPricing = async (registrationId: string) => {
+    setFixingId(registrationId);
+    try {
+      await axios.post(`/admin/fix-pricing/${registrationId}`);
+      await runAudit();
+    } catch (error) {
+      console.error('Failed to fix pricing:', error);
+    } finally {
+      setFixingId(null);
+    }
   };
 
   const correctCount = auditResults.filter(r => r.correctPrice).length;
@@ -230,6 +243,7 @@ const PaymentAudit = () => {
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Paystack</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Registered</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Issues</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Fix</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -260,6 +274,20 @@ const PaymentAudit = () => {
                           </div>
                         ) : (
                           <span className="text-xs text-green-600 font-medium">Correct</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4">
+                        {!r.correctPrice && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => fixPricing(r.registrationId)}
+                            disabled={fixingId === r.registrationId}
+                            className="h-8 px-3 text-amber-700 border-amber-300 hover:bg-amber-50"
+                          >
+                            <Wrench className={`w-3.5 h-3.5 mr-1.5 ${fixingId === r.registrationId ? 'animate-spin' : ''}`} />
+                            {fixingId === r.registrationId ? 'Fixing...' : 'Fix'}
+                          </Button>
                         )}
                       </td>
                     </tr>
