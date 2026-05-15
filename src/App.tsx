@@ -13,6 +13,7 @@ import AdminLayout from "./pages/admin/AdminLayout";
 import AdminLogin from "./pages/admin/Login";
 import Dashboard from "./pages/admin/Dashboard";
 import Registrations from "./pages/admin/Registrations";
+import SpouseRegistrations from "./pages/admin/SpouseRegistrations";
 import RegistrationTracking from "./pages/admin/RegistrationTracking";
 import EmailLogs from "./pages/admin/EmailLogs";
 import Scanner from "./pages/admin/Scanner";
@@ -42,6 +43,7 @@ const App = () => (
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<Dashboard />} />
             <Route path="registrations" element={<Registrations />} />
+            <Route path="spouse-registrations" element={<SpouseRegistrations />} />
             <Route path="registration-tracking" element={<RegistrationTracking />} />
             <Route path="email-logs" element={<EmailLogs />} />
             <Route path="scanner" element={<Scanner />} />
