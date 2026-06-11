@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useNavigate } from 'react-router-dom';
-import axios from '@/lib/axios';
+import { registrationApi } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 
 const VerifyPayment = () => {
@@ -35,13 +35,13 @@ const VerifyPayment = () => {
     setVerificationResult({ status: null, message: '' });
 
     try {
-      const response = await axios.get(`/registrations/verify-payment/${reference.trim()}`);
+      const response = await registrationApi.verifyPayment(reference.trim());
       
-      if (response.data.status === 'success') {
+      if (response.status === 'success') {
         setVerificationResult({
           status: 'success',
           message: 'Payment verified successfully! Check your email for confirmation.',
-          data: response.data.data,
+          data: response.data,
         });
         
         toast({
@@ -55,7 +55,7 @@ const VerifyPayment = () => {
         });
       }
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 'Failed to verify payment. Please try again.';
+      const errorMessage = error.message || 'Failed to verify payment. Please try again.';
       setVerificationResult({
         status: 'error',
         message: errorMessage,

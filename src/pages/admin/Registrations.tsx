@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import axios from '@/lib/axios';
+import { adminApi } from '@/services/admin';
 import { PaymentStatusBadge } from '@/components/admin/PaymentStatusBadge';
 import {
   formatAdminCategory,
@@ -54,14 +54,12 @@ const Registrations = () => {
   const fetchRegistrations = async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (statusFilter !== 'all') params.append('status', statusFilter);
-      if (categoryFilter !== 'all') params.append('category', categoryFilter);
-      if (search) params.append('search', search);
+      const params: Record<string, string> = {};
+      if (statusFilter !== 'all') params.status = statusFilter;
+      if (categoryFilter !== 'all') params.category = categoryFilter;
+      if (search) params.search = search;
 
-      const response = await axios.get(
-        `/admin/registrations?${params}`
-      );
+      const response = await adminApi.getRegistrations(params);
       setRegistrations(response.data);
     } catch (error) {
       console.error('Failed to fetch registrations:', error);
@@ -77,7 +75,7 @@ const Registrations = () => {
     
     try {
       setLoading(true);
-      await axios.post(`/admin/resend-email/${registrationId}`);
+      await adminApi.resendEmail(registrationId);
       alert('✅ Confirmation email resent successfully!');
     } catch (error: any) {
       console.error('Failed to resend email:', error);
@@ -90,9 +88,7 @@ const Registrations = () => {
   const handleRequery = async (reference: string, registrationId: string) => {
     try {
       setLoading(true);
-      const response = await axios.post('/admin/requery-payment', {
-        reference,
-      });
+      const response = await adminApi.requeryPayment(registrationId);
       
       if (response.data.status === 'success') {
         // Show success message

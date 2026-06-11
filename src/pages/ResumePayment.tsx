@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useNavigate } from 'react-router-dom';
-import axios from '@/lib/axios';
+import { registrationApi } from '@/services/api';
+import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 
 interface PendingRegistration {
@@ -46,52 +47,53 @@ const ResumePayment = () => {
     setRegistration(null);
 
     try {
-      const response = await axios.get(`/registrations/check/${encodeURIComponent(email.trim())}`);
+      const response = await registrationApi.checkRegistration(email.trim());
       
-      if (response.data.exists) {
-        if (response.data.status === 'paid') {
+      if (response.exists) {
+        if (response.status === 'paid') {
           setError('Your registration is already paid. Check your email for confirmation.');
-        } else if (response.data.status === 'pending') {
-          // Use the data from check endpoint directly
+        } else if (response.status === 'pending') {
           setRegistration({
-            registrationId: response.data.registrationId,
+            registrationId: response.registrationId || '',
             email: email.trim(),
-            firstName: '', // Will be filled from backend
-            surname: '', // Will be filled from backend
-            category: '', // Will be filled from backend
-            totalAmount: 0, // Will be filled from backend
-            paymentReference: response.data.paymentReference,
+            firstName: '',
+            surname: '',
+            category: '',
+            totalAmount: 0,
+            paymentReference: response.paymentReference || '',
             createdAt: new Date().toISOString(),
           });
           
-          // Fetch full details from a public endpoint
           try {
-            const detailsResponse = await axios.get(`/registrations/${response.data.registrationId}`);
-            if (detailsResponse.data) {
+            const details = await supabase
+              .from('registrations')
+              .select('*')
+              .eq('id', response.registrationId)
+              .single();
+            if (details.data) {
               setRegistration({
-                registrationId: detailsResponse.data.id,
-                email: detailsResponse.data.email,
-                firstName: detailsResponse.data.firstName,
-                surname: detailsResponse.data.surname,
-                category: detailsResponse.data.category,
-                totalAmount: detailsResponse.data.totalAmount,
-                paymentReference: detailsResponse.data.paymentReference,
-                createdAt: detailsResponse.data.createdAt,
+                registrationId: details.data.id,
+                email: details.data.email,
+                firstName: details.data.firstName,
+                surname: details.data.surname,
+                category: details.data.category,
+                totalAmount: details.data.totalAmount,
+                paymentReference: details.data.paymentReference,
+                createdAt: details.data.createdAt,
               });
             }
           } catch (detailsError) {
             console.error('Failed to fetch details:', detailsError);
-            // Continue with basic info from check endpoint
           }
         } else {
-          setError(`Registration status: ${response.data.status}. Please contact support.`);
+          setError(`Registration status: ${response.status}. Please contact support.`);
         }
       } else {
         setError('No registration found with this email. Please register first.');
       }
     } catch (error: any) {
       console.error('Failed to search registration:', error);
-      setError(error.response?.data?.message || 'Failed to search. Please try again.');
+      setError(error.message || 'Failed to search. Please try again.');
     } finally {
       setIsSearching(false);
     }
@@ -103,7 +105,7 @@ const ResumePayment = () => {
     setIsProcessing(true);
 
     try {
-      const response = await axios.post('/payment/initialize', {
+      const response = await registrationApi.initializePayment({
         email: registration.email,
         amount: registration.totalAmount,
         reference: registration.paymentReference,
@@ -128,7 +130,7 @@ const ResumePayment = () => {
         },
       });
 
-      const authorizationUrl = response?.data?.data?.authorization_url;
+      const authorizationUrl = response?.data?.authorization_url;
       if (!authorizationUrl) {
         throw new Error('Payment initialization failed: no authorization URL returned');
       }

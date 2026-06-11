@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import axios from '@/lib/axios';
+import { adminApi } from '@/services/admin';
 import { PaymentStatusBadge } from '@/components/admin/PaymentStatusBadge';
 import {
   formatAdminCurrency,
@@ -56,8 +56,8 @@ const SpouseRegistrations = () => {
   const fetchRegistrations = async () => {
     setLoading(true);
     try {
-      const response = await axios.get('/admin/spouse-registrations');
-      setRegistrations(response.data);
+      const data = await adminApi.getSpouseRegistrations();
+      setRegistrations(data);
     } catch (error) {
       console.error('Failed to fetch spouse registrations:', error);
     } finally {
@@ -83,9 +83,9 @@ const SpouseRegistrations = () => {
     if (!editTarget) return;
     setSaving(true);
     try {
-      const response = await axios.post(`/admin/fix-spouse-details/${editTarget.id}`, editForm);
+      const data = await adminApi.fixSpouseDetails(editTarget.id, editForm);
       setRegistrations(prev =>
-        prev.map(reg => (reg.id === editTarget.id ? response.data.registration : reg))
+        prev.map(reg => (reg.id === editTarget.id ? data.registration : reg))
       );
       setEditTarget(null);
     } catch (error) {

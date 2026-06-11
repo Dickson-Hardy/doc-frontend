@@ -3,7 +3,7 @@ import { Mail, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import axios from '@/lib/axios';
+import { adminApi } from '@/services/admin';
 import { formatAdminDateTime, formatAdminNumber } from '@/lib/admin-format';
 
 interface EmailLog {
@@ -27,8 +27,8 @@ const EmailLogs = () => {
   const fetchLogs = async () => {
     setLoading(true);
     try {
-      const response = await axios.get('/admin/email-logs');
-      setLogs(response.data);
+      const { data } = await adminApi.getEmailLogs(1, 100);
+      setLogs(data);
     } catch (error) {
       console.error('Failed to fetch email logs:', error);
     } finally {

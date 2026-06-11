@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Save, Key, DollarSign, Info } from 'lucide-react';
-import axios from '@/lib/axios';
+import { adminApi } from '@/services/admin';
 import { useToast } from '@/hooks/use-toast';
 
 const Settings = () => {
@@ -25,11 +25,11 @@ const Settings = () => {
   const fetchSettings = async () => {
     setLoading(true);
     try {
-      const response = await axios.get('/settings/paystack');
+      const data = await adminApi.getSettings();
       setSettings({
-        publicKey: response.data.publicKey || '',
+        publicKey: data.publicKey || '',
         secretKey: '', // Never show secret key
-        splitCode: response.data.splitCode || '',
+        splitCode: data.splitCode || '',
       });
     } catch (error: any) {
       toast({
@@ -54,7 +54,7 @@ const Settings = () => {
 
     setSaving(true);
     try {
-      await axios.put('/settings/paystack', settings);
+      await adminApi.updateSettings('paystack', settings);
       toast({
         title: 'Success',
         description: 'Paystack settings updated successfully',

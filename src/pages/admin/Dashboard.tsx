@@ -8,7 +8,7 @@ import {
   Users,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import axiosInstance from '@/lib/axios';
+import { adminApi } from '@/services/admin';
 import { formatAdminCurrency, formatAdminNumber } from '@/lib/admin-format';
 
 interface Stats {
@@ -48,8 +48,8 @@ const Dashboard = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await axiosInstance.get('/admin/stats');
-      setStats(response.data);
+      const data = await adminApi.getStats();
+      setStats(data);
     } catch (error) {
       console.error('Failed to fetch stats:', error);
     } finally {

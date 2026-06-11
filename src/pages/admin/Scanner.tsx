@@ -4,7 +4,7 @@ import { Camera, CheckCircle, XCircle, Upload, QrCode } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import axios from '@/lib/axios';
+import { adminApi } from '@/services/admin';
 
 interface ScanResult {
   registrationId: string;
@@ -100,9 +100,7 @@ const Scanner = () => {
 
     setVerifying(true);
     try {
-      await axios.post('/admin/verify-attendance', {
-        registrationId: result.registrationId,
-      });
+      await adminApi.verifyAttendance(result.registrationId);
       setResult({ ...result, verified: true });
     } catch (err: any) {
       setError(err.response?.data?.message || 'Verification failed');

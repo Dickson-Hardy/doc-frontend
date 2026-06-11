@@ -1,6 +1,8 @@
+import { supabase } from '@/lib/supabase';
 import { MemberData, RegistrationFormData } from '@/types/registration';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+const PAYSTACK_PUBLIC_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -9,91 +11,63 @@ export class ApiError extends Error {
   }
 }
 
-async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'An error occurred' }));
-    throw new ApiError(response.status, error.message || 'Request failed');
-  }
-
-  return response.json();
-}
-
 export const memberApi = {
-  // Lookup member by email
   lookupByEmail: async (email: string): Promise<MemberData | null> => {
-    try {
-      return await fetchApi<MemberData>(`/members/lookup?email=${encodeURIComponent(email)}`);
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 404) {
-        return null;
-      }
-      throw error;
-    }
+    const { data, error } = await supabase.functions.invoke('member-lookup', {
+      body: { email },
+    });
+    if (error || !data?.member) return null;
+    return data.member as MemberData;
   },
 };
 
 export const registrationApi = {
-  // Submit registration
   submit: async (data: RegistrationFormData) => {
-    // Convert Date to ISO string for backend
     const payload: any = {
       ...data,
-      dateOfArrival: data.dateOfArrival instanceof Date 
-        ? data.dateOfArrival.toISOString() 
+      dateOfArrival: data.dateOfArrival instanceof Date
+        ? data.dateOfArrival.toISOString().split('T')[0]
         : data.dateOfArrival,
     };
-    
-    // Remove abstractFile from payload (it's already uploaded and we have the URL)
     delete payload.abstractFile;
-    
-    return await fetchApi<{ reference: string; registrationId: string }>('/registrations', {
-      method: 'POST',
-      body: JSON.stringify(payload),
+
+    const { data: result, error } = await supabase.functions.invoke('submit-registration', {
+      body: payload,
     });
+    if (error) throw new ApiError(400, error.message);
+    return result as { reference: string; registrationId: string };
   },
 
-  // Verify payment
   verifyPayment: async (reference: string) => {
-    return await fetchApi<{ status: string; message: string; data: any }>(`/registrations/verify-payment/${reference}`);
-  },
-  
-  // Check registration status by email
-  checkRegistration: async (email: string) => {
-    return await fetchApi<{ exists: boolean; status?: string; registrationId?: string; paymentReference?: string }>(`/registrations/check/${email}`);
+    const { data, error } = await supabase.functions.invoke('paystack-verify', {
+      body: { reference },
+    });
+    if (error) throw new ApiError(400, error.message);
+    return data as { status: string; message: string; data: any };
   },
 
-  // Initialize payment on backend so split code is applied server-side
+  checkRegistration: async (email: string) => {
+    const { data, error } = await supabase.functions.invoke('check-registration', {
+      body: { email },
+    });
+    if (error) throw new ApiError(400, error.message);
+    return data as { exists: boolean; status?: string; registrationId?: string; paymentReference?: string };
+  },
+
   initializePayment: async (data: {
     email: string;
     amount: number;
     reference: string;
-    metadata?: {
-      custom_fields?: Array<{
-        display_name: string;
-        variable_name: string;
-        value: string;
-      }>;
-    };
+    metadata?: any;
   }) => {
-    return await fetchApi<{
+    const { data: result, error } = await supabase.functions.invoke('paystack-init', {
+      body: data,
+    });
+    if (error) throw new ApiError(400, error.message);
+    return result as {
       status: boolean;
       message: string;
-      data: {
-        authorization_url: string;
-        access_code: string;
-        reference: string;
-      };
-    }>('/payment/initialize', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+      data: { authorization_url: string; access_code: string; reference: string };
+    };
   },
 };

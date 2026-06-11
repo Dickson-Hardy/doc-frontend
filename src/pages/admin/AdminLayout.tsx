@@ -14,6 +14,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { authApi } from '@/services/admin';
 
 const AdminLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -21,7 +22,6 @@ const AdminLayout = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if user is authenticated
     const token = localStorage.getItem('adminToken');
     if (!token) {
       navigate('/admin/login');
@@ -46,7 +46,8 @@ const AdminLayout = () => {
     return location.pathname.startsWith(path);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await authApi.logout();
     localStorage.removeItem('adminToken');
     localStorage.removeItem('adminUser');
     navigate('/admin/login');

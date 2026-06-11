@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import axios from '@/lib/axios';
+import { adminApi } from '@/services/admin';
 import { useToast } from '@/hooks/use-toast';
 import { PaymentStatusBadge } from '@/components/admin/PaymentStatusBadge';
 import {
@@ -87,13 +87,12 @@ const RegistrationTracking = () => {
   const fetchRegistrations = async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (statusFilter !== 'all') params.append('status', statusFilter);
-      if (categoryFilter !== 'all') params.append('category', categoryFilter);
-      if (search) params.append('search', search);
+      const params: Record<string, string> = {};
+      if (statusFilter !== 'all') params.status = statusFilter;
+      if (categoryFilter !== 'all') params.category = categoryFilter;
+      if (search) params.search = search;
 
-      const response = await axios.get(`/admin/registrations?${params}`);
-      let data = response.data;
+      let data = await adminApi.getRegistrations(params);
 
       // Filter by accommodation type if needed
       if (accommodationFilter !== 'all') {

@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import axios from '@/lib/axios';
+import { authApi } from '@/services/admin';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -21,14 +21,11 @@ const Login = () => {
     setError('');
 
     try {
-      const response = await axios.post('/auth/login', {
-        email,
-        password,
-      });
+      const response = await authApi.login(email, password);
 
       // Store token and user info
-      localStorage.setItem('adminToken', response.data.access_token);
-      localStorage.setItem('adminUser', JSON.stringify(response.data.user));
+      localStorage.setItem('adminToken', response.access_token);
+      localStorage.setItem('adminUser', JSON.stringify(response.user));
 
       // Redirect to admin dashboard
       navigate('/admin');

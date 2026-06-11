@@ -3,7 +3,7 @@ import { RefreshCw, CheckCircle, XCircle, AlertTriangle, Download, Wrench } from
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import axios from '@/lib/axios';
+import { adminApi } from '@/services/admin';
 import { formatAdminCurrency, formatAdminNumber, formatAdminCategory } from '@/lib/admin-format';
 
 interface PricingResult {
@@ -41,8 +41,8 @@ const PaymentAudit = () => {
 
   const fetchPaystackStatus = async () => {
     try {
-      const response = await axios.get('/admin/paystack-status');
-      setPaystackStatus(response.data);
+      const data = await adminApi.getPaystackStatus();
+      setPaystackStatus(data);
     } catch (error) {
       console.error('Failed to fetch Paystack status:', error);
     }
@@ -52,8 +52,8 @@ const PaymentAudit = () => {
     setAuditing(true);
     setLoading(true);
     try {
-      const response = await axios.get('/admin/pricing-audit');
-      setAuditResults(response.data);
+      const data = await adminApi.getPricingAudit();
+      setAuditResults(data);
     } catch (error) {
       console.error('Failed to run audit:', error);
     } finally {
@@ -88,7 +88,7 @@ const PaymentAudit = () => {
   const fixPricing = async (registrationId: string) => {
     setFixingId(registrationId);
     try {
-      await axios.post(`/admin/fix-pricing/${registrationId}`);
+      await adminApi.fixPricing(registrationId);
       await runAudit();
     } catch (error) {
       console.error('Failed to fix pricing:', error);

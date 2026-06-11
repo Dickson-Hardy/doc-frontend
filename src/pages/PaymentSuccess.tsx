@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { CheckCircle, Loader2, XCircle, Download, Mail } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import axios from '@/lib/axios';
+import { registrationApi } from '@/services/api';
 
 const PaymentSuccess = () => {
   const [searchParams] = useSearchParams();
@@ -26,18 +26,18 @@ const PaymentSuccess = () => {
 
   const verifyPayment = async (reference: string) => {
     try {
-      const response = await axios.get(`/registrations/verify-payment/${reference}`);
+      const response = await registrationApi.verifyPayment(reference);
       
-      if (response.data.status === 'success') {
+      if (response.status === 'success') {
         setStatus('success');
-        setPaymentData(response.data.data);
+        setPaymentData(response.data);
       } else {
         setStatus('error');
-        setErrorMessage(response.data.message || 'Payment verification failed');
+        setErrorMessage(response.message || 'Payment verification failed');
       }
     } catch (error: any) {
       setStatus('error');
-      setErrorMessage(error.response?.data?.message || 'Failed to verify payment');
+      setErrorMessage(error.message || 'Failed to verify payment');
     }
   };
 
