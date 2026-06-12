@@ -51,7 +51,7 @@ export const registrationApi = {
       body: { email },
     });
     if (error) throw new ApiError(400, error.message);
-    return data as { exists: boolean; status?: string; registrationId?: string; paymentReference?: string };
+    return data as { exists: boolean; status?: string; registrationId?: string; paymentReference?: string; registration?: any };
   },
 
   initializePayment: async (data: {

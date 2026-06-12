@@ -7,7 +7,6 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useNavigate } from 'react-router-dom';
 import { registrationApi } from '@/services/api';
-import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 
 interface PendingRegistration {
@@ -53,37 +52,29 @@ const ResumePayment = () => {
         if (response.status === 'paid') {
           setError('Your registration is already paid. Check your email for confirmation.');
         } else if (response.status === 'pending') {
-          setRegistration({
-            registrationId: response.registrationId || '',
-            email: email.trim(),
-            firstName: '',
-            surname: '',
-            category: '',
-            totalAmount: 0,
-            paymentReference: response.paymentReference || '',
-            createdAt: new Date().toISOString(),
-          });
-          
-          try {
-            const details = await supabase
-              .from('registrations')
-              .select('*')
-              .eq('id', response.registrationId)
-              .single();
-            if (details.data) {
-              setRegistration({
-                registrationId: details.data.id,
-                email: details.data.email,
-                firstName: details.data.firstName,
-                surname: details.data.surname,
-                category: details.data.category,
-                totalAmount: details.data.totalAmount,
-                paymentReference: details.data.paymentReference,
-                createdAt: details.data.createdAt,
-              });
-            }
-          } catch (detailsError) {
-            console.error('Failed to fetch details:', detailsError);
+          const reg = response.registration;
+          if (reg) {
+            setRegistration({
+              registrationId: reg.id,
+              email: reg.email,
+              firstName: reg.firstName,
+              surname: reg.surname,
+              category: reg.category,
+              totalAmount: reg.totalAmount,
+              paymentReference: reg.paymentReference,
+              createdAt: reg.createdAt,
+            });
+          } else {
+            setRegistration({
+              registrationId: response.registrationId || '',
+              email: email.trim(),
+              firstName: '',
+              surname: '',
+              category: '',
+              totalAmount: 0,
+              paymentReference: response.paymentReference || '',
+              createdAt: new Date().toISOString(),
+            });
           }
         } else {
           setError(`Registration status: ${response.status}. Please contact support.`);

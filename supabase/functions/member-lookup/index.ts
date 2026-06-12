@@ -1,11 +1,9 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -16,11 +14,11 @@ serve(async (req) => {
     const mongoUri = Deno.env.get("MONGODB_URI");
     if (!mongoUri) throw new Error("MONGODB_URI not set");
 
-    const { MongoClient } = await import("https://deno.land/x/mongodb@v0.12.0/mod.ts");
+    const { MongoClient } = await import("npm:mongodb@6");
     const client = new MongoClient(mongoUri);
     await client.connect();
 
-    const db = client.database("live");
+    const db = client.db("live");
     const members = db.collection("members");
     const member = await members.findOne({ email });
 
