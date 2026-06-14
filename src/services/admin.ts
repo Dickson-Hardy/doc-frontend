@@ -168,9 +168,50 @@ export const adminApi = {
   },
 
   getPricingAudit: async () => {
-    const { data, error } = await supabase.from('registrations').select('*');
+    const { data, error } = await supabase
+      .from('registrations')
+      .select('*')
+      .eq('paymentStatus', 'paid');
     if (error) throw error;
-    return data || [];
+
+    const categoryPrices: Record<string, number> = {
+      'student': 15000,
+      'junior-doctor': 35000,
+      'senior-doctor': 50000,
+      'doctor-with-spouse': 80000,
+    };
+
+    const deadline = new Date('2026-06-30');
+
+    return (data || []).map((reg: any) => {
+      const baseFee = categoryPrices[reg.category] || 0;
+      const createdAt = new Date(reg.createdAt);
+      const lateFee = createdAt > deadline ? Math.round(baseFee * 0.25) : 0;
+      const expectedPrice = baseFee + lateFee;
+      const dbAmount = reg.totalAmount || 0;
+      const discrepancies: string[] = [];
+
+      if (dbAmount !== expectedPrice) {
+        discrepancies.push(`DB amount (₦${dbAmount.toLocaleString()}) differs from expected (₦${expectedPrice.toLocaleString()})`);
+      }
+      if (reg.baseFee !== baseFee) {
+        discrepancies.push(`Base fee (₦${reg.baseFee?.toLocaleString()}) differs from category price (₦${baseFee.toLocaleString()})`);
+      }
+
+      return {
+        registrationId: reg.id,
+        name: `${reg.firstName} ${reg.surname}`,
+        email: reg.email,
+        category: reg.category,
+        expectedPrice,
+        dbAmount,
+        paystackAmount: null,
+        paidAt: reg.paidAt || null,
+        createdAt: reg.createdAt,
+        discrepancies,
+        correctPrice: discrepancies.length === 0,
+      };
+    });
   },
 
   fixPricing: async (registrationId: string) => {
