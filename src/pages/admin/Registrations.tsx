@@ -115,27 +115,39 @@ const Registrations = () => {
     }
   };
 
-  const exportToCSV = () => {
-    const headers = ['Name', 'Email', 'Phone', 'Chapter', 'State', 'Category', 'Amount', 'Status', 'Date'];
-    const rows = registrations.map((reg) => [
-      `${reg.firstName} ${reg.surname}`,
-      reg.email,
-      reg.phone || '-',
-      reg.chapter || '-',
-      reg.state || '-',
-      formatAdminCategory(reg.category),
-      formatAdminCurrency(reg.totalAmount),
-      reg.paymentStatus,
-      formatAdminDate(reg.createdAt),
-    ]);
-    const csv = [headers, ...rows].map((row) => row.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `registrations-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+  const exportToCSV = async () => {
+    try {
+      const params: Record<string, any> = { page: 1, limit: total };
+      if (statusFilter !== 'all') params.status = statusFilter;
+      if (categoryFilter !== 'all') params.category = categoryFilter;
+      if (search.trim()) params.search = search.trim();
+
+      const { data } = await adminApi.getRegistrations(params);
+
+      const headers = ['Name', 'Email', 'Phone', 'Chapter', 'State', 'Category', 'Amount', 'Status', 'Date'];
+      const rows = data.map((reg: Registration) => [
+        `${reg.firstName} ${reg.surname}`,
+        reg.email,
+        reg.phone || '-',
+        reg.chapter || '-',
+        reg.state || '-',
+        formatAdminCategory(reg.category),
+        formatAdminCurrency(reg.totalAmount),
+        reg.paymentStatus,
+        formatAdminDate(reg.createdAt),
+      ]);
+      const csv = [headers, ...rows].map((row) => row.join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `registrations-${statusFilter !== 'all' ? statusFilter + '-' : ''}${categoryFilter !== 'all' ? categoryFilter + '-' : ''}${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Failed to export. Try again.');
+    }
   };
 
   const startRow = total === 0 ? 0 : (page - 1) * pageSize + 1;
