@@ -124,7 +124,7 @@ export const adminApi = {
     const { data, error } = await supabase
       .from('registrations')
       .select('*')
-      .or('spouseFirstName.is.not.null,category.eq.doctor-with-spouse')
+      .eq('category', 'doctor-with-spouse')
       .order('createdAt', { ascending: false });
 
     if (error) throw error;
