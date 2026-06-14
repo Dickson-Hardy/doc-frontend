@@ -11,6 +11,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
 import { adminApi } from '@/services/admin';
 import { PaymentStatusBadge } from '@/components/admin/PaymentStatusBadge';
 import {
@@ -20,6 +28,8 @@ import {
   formatAdminNumber,
   formatAccommodation,
 } from '@/lib/admin-format';
+
+const PAGE_SIZE = 50;
 
 interface Registration {
   id: string;
@@ -46,26 +56,36 @@ const Registrations = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
 
   useEffect(() => {
     fetchRegistrations();
-  }, [statusFilter, categoryFilter]);
+  }, [statusFilter, categoryFilter, page]);
+
+  const totalPages = Math.ceil(total / PAGE_SIZE);
 
   const fetchRegistrations = async () => {
     setLoading(true);
     try {
-      const params: Record<string, string> = {};
+      const params: Record<string, any> = { page, limit: PAGE_SIZE };
       if (statusFilter !== 'all') params.status = statusFilter;
       if (categoryFilter !== 'all') params.category = categoryFilter;
       if (search) params.search = search;
 
       const response = await adminApi.getRegistrations(params);
       setRegistrations(response.data);
+      setTotal(response.total);
     } catch (error) {
       console.error('Failed to fetch registrations:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleFilterChange = (setter: (v: string) => void) => (v: string) => {
+    setter(v);
+    setPage(1);
   };
 
   const handleResendEmail = async (registrationId: string, email: string) => {
@@ -152,12 +172,12 @@ const Registrations = () => {
               <Input
                 placeholder="Search by name or email..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && fetchRegistrations()}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { setPage(1); fetchRegistrations(); } }}
                 className="pl-10"
               />
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select value={statusFilter} onValueChange={handleFilterChange(setStatusFilter)}>
               <SelectTrigger>
                 <SelectValue placeholder="Payment Status" />
               </SelectTrigger>
@@ -168,7 +188,7 @@ const Registrations = () => {
                 <SelectItem value="abandoned">Abandoned</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <Select value={categoryFilter} onValueChange={handleFilterChange(setCategoryFilter)}>
               <SelectTrigger>
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
@@ -181,7 +201,7 @@ const Registrations = () => {
                 <SelectItem value="doctor">Doctor (Legacy)</SelectItem>
               </SelectContent>
             </Select>
-            <Button onClick={fetchRegistrations} className="w-full">
+            <Button onClick={() => { setPage(1); fetchRegistrations(); }} className="w-full">
               <Search className="w-4 h-4 mr-2" />
               Search
             </Button>
@@ -193,7 +213,12 @@ const Registrations = () => {
       <Card>
         <CardHeader>
           <CardTitle>
-            {formatAdminNumber(registrations.length)} Registration{registrations.length !== 1 ? 's' : ''}
+            {formatAdminNumber(total)} Registration{total !== 1 ? 's' : ''}
+            {total > PAGE_SIZE && (
+              <span className="text-sm font-normal text-gray-500 ml-2">
+                (Page {page} of {totalPages})
+              </span>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -284,6 +309,50 @@ const Registrations = () => {
                 </tbody>
               </table>
             </div>
+
+            {totalPages > 1 && (
+              <div className="mt-4 flex justify-center">
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                        className={page <= 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                      />
+                    </PaginationItem>
+                    {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                      let pageNum: number;
+                      if (totalPages <= 7) {
+                        pageNum = i + 1;
+                      } else if (page <= 4) {
+                        pageNum = i + 1;
+                      } else if (page >= totalPages - 3) {
+                        pageNum = totalPages - 6 + i;
+                      } else {
+                        pageNum = page - 3 + i;
+                      }
+                      return (
+                        <PaginationItem key={pageNum}>
+                          <PaginationLink
+                            onClick={() => setPage(pageNum)}
+                            isActive={page === pageNum}
+                            className="cursor-pointer"
+                          >
+                            {pageNum}
+                          </PaginationLink>
+                        </PaginationItem>
+                      );
+                    })}
+                    <PaginationItem>
+                      <PaginationNext
+                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                        className={page >= totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            )}
           )}
         </CardContent>
       </Card>
