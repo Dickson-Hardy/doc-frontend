@@ -20,7 +20,7 @@ interface Stats {
   splitPayments?: number;
 }
 
-interface FunnelMetric {
+interface StatusMetric {
   label: string;
   value: number;
   percentage: number;
@@ -97,7 +97,7 @@ const Dashboard = () => {
       {
         title: 'Paid',
         value: paidRegistrations,
-        subtitle: `${paidPercentage.toFixed(1)}% conversion`,
+        subtitle: `${paidPercentage.toFixed(1)}% of total`,
         icon: DollarSign,
         iconClassName: 'bg-green-100 text-green-700',
         barClassName: 'from-emerald-500 to-green-500',
@@ -115,7 +115,7 @@ const Dashboard = () => {
       {
         title: 'Abandoned',
         value: abandonedRegistrations,
-        subtitle: 'Likely dropped sessions',
+        subtitle: 'Incomplete registrations',
         icon: UserX,
         iconClassName: 'bg-rose-100 text-rose-700',
         barClassName: 'from-rose-500 to-red-500',
@@ -133,7 +133,7 @@ const Dashboard = () => {
     ],
   );
 
-  const funnelMetrics = useMemo<FunnelMetric[]>(
+  const statusMetrics = useMemo<StatusMetric[]>(
     () => [
       {
         label: 'Paid',
@@ -185,7 +185,7 @@ const Dashboard = () => {
             </p>
             <h1 className="mt-2 text-3xl font-bold text-slate-900">Dashboard</h1>
             <p className="mt-2 max-w-2xl text-sm text-slate-600">
-              Real-time overview of registration volume, payment conversion, and revenue.
+              Overview of registrations, payments, and revenue.
             </p>
           </div>
 
@@ -255,7 +255,7 @@ const Dashboard = () => {
         <Card className="border border-slate-200 bg-white shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center justify-between text-slate-900">
-              Revenue Pulse
+              Revenue
               <TrendingUp className="h-5 w-5 text-emerald-600" />
             </CardTitle>
           </CardHeader>
@@ -274,7 +274,7 @@ const Dashboard = () => {
 
             <div>
               <div className="mb-2 flex items-center justify-between text-sm">
-                <span className="text-slate-600">Split payment adoption</span>
+                <span className="text-slate-600">                Paystack split payments</span>
                 <span className="font-semibold text-slate-900">
                   {splitAdoptionPercentage.toFixed(1)}%
                 </span>
@@ -292,8 +292,8 @@ const Dashboard = () => {
                 />
               </div>
               <p className="mt-2 text-xs text-slate-500">
-                {formatAdminNumber(splitPayments)} split payments out of{' '}
-                {formatAdminNumber(paidRegistrations)} successful payments.
+                {formatAdminNumber(splitPayments)} registrations using Paystack split out of{' '}
+                {formatAdminNumber(paidRegistrations)} paid.
               </p>
             </div>
           </CardContent>
@@ -302,12 +302,12 @@ const Dashboard = () => {
         <Card className="border border-slate-200 bg-white shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center justify-between text-slate-900">
-              Payment Funnel
+              Registration Status
               <Activity className="h-5 w-5 text-indigo-600" />
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {funnelMetrics.map((metric) => {
+            {statusMetrics.map((metric) => {
               const width = metric.percentage === 0 ? 0 : Math.max(6, metric.percentage);
 
               return (
@@ -329,7 +329,7 @@ const Dashboard = () => {
             })}
 
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
-              Based on {formatAdminNumber(totalRegistrations)} total registrations.
+              {formatAdminNumber(totalRegistrations)} total registrations.
             </div>
           </CardContent>
         </Card>

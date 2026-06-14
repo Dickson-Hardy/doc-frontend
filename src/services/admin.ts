@@ -39,6 +39,14 @@ export const adminApi = {
       supabase.from('registrations').select('*', { count: 'exact', head: true }).eq('paymentStatus', 'abandoned'),
     ]);
 
+    const { data: paidRows } = await supabase
+      .from('registrations')
+      .select('totalAmount, splitCode')
+      .eq('paymentStatus', 'paid');
+
+    const revenue = (paidRows || []).reduce((sum, r) => sum + (r.totalAmount || 0), 0);
+    const splitPayments = (paidRows || []).filter(r => r.splitCode).length;
+
     const categoryBreakdown = await supabase.from('registrations').select('category');
     const categories: Record<string, number> = {};
     (categoryBreakdown.data || []).forEach(r => {
@@ -50,6 +58,8 @@ export const adminApi = {
       paid: paidCount.count || 0,
       pending: pendingCount.count || 0,
       abandoned: abandonedCount.count || 0,
+      revenue,
+      splitPayments,
       categories,
     };
   },
