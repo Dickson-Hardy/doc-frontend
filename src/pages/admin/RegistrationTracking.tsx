@@ -94,27 +94,17 @@ const RegistrationTracking = () => {
 
       let { data: rowData } = await adminApi.getRegistrations({ ...params, limit: 1000 });
 
-      // Filter by accommodation type if needed
       if (accommodationFilter !== 'all') {
         rowData = rowData.filter((reg: Registration) => {
           if (accommodationFilter === 'covenant') {
-            return ['covenant', 'covenant-guest-house', 'pg-hostel', 'camp-a'].includes(
-              reg.accommodationType,
-            );
+            return ['covenant', 'covenant-guest-house', 'pg-hostel', 'camp-a'].includes(reg.accommodationType);
           }
-
           if (accommodationFilter === 'temperance') {
             return reg.accommodationType === 'temperance';
           }
-
           if (accommodationFilter === 'none') {
-            return (
-              !reg.accommodationType ||
-              reg.accommodationType === 'no-accommodation' ||
-              reg.accommodationType === 'student-free'
-            );
+            return !reg.accommodationType || reg.accommodationType === 'no-accommodation' || reg.accommodationType === 'student-free';
           }
-
           return reg.accommodationType === accommodationFilter;
         });
       }
@@ -122,11 +112,7 @@ const RegistrationTracking = () => {
       setRegistrations(rowData);
     } catch (error) {
       console.error('Failed to fetch registrations:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load registrations',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: 'Failed to load registrations', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -139,60 +125,24 @@ const RegistrationTracking = () => {
 
   const exportToCSV = () => {
     const headers = [
-      'Name',
-      'Email',
-      'Phone',
-      'Chapter',
-      'State',
-      'Age',
-      'Sex',
-      'Category',
-      'Current Post',
-      'Previous Post',
-      'Arrival Date',
-      'Accommodation',
-      'Room Type',
-      'Room Sharing',
-      'Roommate',
-      'Has Abstract',
-      'Presentation Title',
-      'Base Fee',
-      'Late Fee',
-      'Total Amount',
-      'Payment Status',
-      'Payment Reference',
-      'Split Code',
-      'Paid At',
-      'Attendance Verified',
-      'Registered At',
+      'Name', 'Email', 'Phone', 'Chapter', 'State', 'Age', 'Sex', 'Category',
+      'Current Post', 'Previous Post', 'Arrival Date', 'Accommodation', 'Room Type',
+      'Room Sharing', 'Roommate', 'Has Abstract', 'Presentation Title', 'Base Fee',
+      'Late Fee', 'Total Amount', 'Payment Status', 'Payment Reference', 'Split Code',
+      'Paid At', 'Attendance Verified', 'Registered At',
     ];
 
     const rows = registrations.map((reg) => [
       `${reg.firstName} ${reg.surname} ${reg.otherNames || ''}`.trim(),
-      reg.email,
-      reg.phone,
-      reg.chapter,
-      reg.state || '-',
-      reg.age,
-      reg.sex,
-      formatAdminCategory(reg.category),
-      reg.currentLeadershipPost || '-',
-      reg.previousLeadershipPost || '-',
-      formatAdminDate(reg.dateOfArrival),
-      formatAccommodation(reg.accommodationType),
-      reg.covenantRoomType || reg.temperanceRoomType || '-',
-      reg.roomSharing || '-',
-      reg.roommateName || '-',
-      reg.hasAbstract ? 'Yes' : 'No',
-      reg.presentationTitle || '-',
-      formatAdminCurrency(reg.baseFee),
-      formatAdminCurrency(reg.lateFee),
-      formatAdminCurrency(reg.totalAmount),
-      reg.paymentStatus,
-      reg.paymentReference,
-      reg.splitCode || '-',
-      formatAdminDateTime(reg.paidAt),
-      reg.attendanceVerified ? 'Yes' : 'No',
+      reg.email, reg.phone, reg.chapter, reg.state || '-', reg.age, reg.sex,
+      formatAdminCategory(reg.category), reg.currentLeadershipPost || '-',
+      reg.previousLeadershipPost || '-', formatAdminDate(reg.dateOfArrival),
+      formatAccommodation(reg.accommodationType), reg.covenantRoomType || reg.temperanceRoomType || '-',
+      reg.roomSharing || '-', reg.roommateName || '-', reg.hasAbstract ? 'Yes' : 'No',
+      reg.presentationTitle || '-', formatAdminCurrency(reg.baseFee),
+      formatAdminCurrency(reg.lateFee), formatAdminCurrency(reg.totalAmount),
+      reg.paymentStatus, reg.paymentReference, reg.splitCode || '-',
+      formatAdminDateTime(reg.paidAt), reg.attendanceVerified ? 'Yes' : 'No',
       formatAdminDateTime(reg.createdAt),
     ]);
 
@@ -204,23 +154,14 @@ const RegistrationTracking = () => {
     a.download = `registration-tracking-${new Date().toISOString()}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
-
-    toast({
-      title: 'Success',
-      description: 'Registration data exported successfully',
-    });
+    toast({ title: 'Success', description: 'Registration data exported successfully' });
   };
 
   const downloadDocument = async (url: string, filename: string) => {
     try {
-      toast({
-        title: 'Downloading...',
-        description: 'Please wait while we prepare your document',
-      });
-
+      toast({ title: 'Downloading...', description: 'Please wait while we prepare your document' });
       const response = await fetch(url);
       if (!response.ok) throw new Error('Download failed');
-      
       const blob = await response.blob();
       const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -230,160 +171,112 @@ const RegistrationTracking = () => {
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(downloadUrl);
-
-      toast({
-        title: 'Success',
-        description: 'Document downloaded successfully',
-      });
+      toast({ title: 'Success', description: 'Document downloaded successfully' });
     } catch (error) {
-      console.error('Download error:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to download document. Please try again.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: 'Failed to download document. Please try again.', variant: 'destructive' });
     }
   };
 
   const downloadAllAbstracts = async () => {
-    const abstractRegistrations = registrations.filter(
-      (reg) => reg.hasAbstract && reg.abstractFileUrl
-    );
-
+    const abstractRegistrations = registrations.filter((reg) => reg.hasAbstract && reg.abstractFileUrl);
     if (abstractRegistrations.length === 0) {
-      toast({
-        title: 'No Abstracts',
-        description: 'No abstracts available to download',
-        variant: 'destructive',
-      });
+      toast({ title: 'No Abstracts', description: 'No abstracts available to download', variant: 'destructive' });
       return;
     }
-
-    toast({
-      title: 'Downloading Abstracts',
-      description: `Preparing ${abstractRegistrations.length} abstract(s)...`,
-    });
-
+    toast({ title: 'Downloading Abstracts', description: `Preparing ${abstractRegistrations.length} abstract(s)...` });
     for (const reg of abstractRegistrations) {
-      await downloadDocument(
-        reg.abstractFileUrl,
-        `abstract-${reg.firstName}-${reg.surname}.pdf`
-      );
-      // Small delay between downloads
+      await downloadDocument(reg.abstractFileUrl, `abstract-${reg.firstName}-${reg.surname}.pdf`);
       await new Promise(resolve => setTimeout(resolve, 500));
     }
   };
 
-  const getAccommodationSummary = () => {
-    const summary = {
-      covenant: 0,
-      temperance: 0,
-      none: 0,
-    };
-
-    registrations.forEach((reg) => {
-      if (['covenant', 'covenant-guest-house', 'pg-hostel', 'camp-a'].includes(reg.accommodationType)) {
-        summary.covenant++;
-      }
-      else if (reg.accommodationType === 'temperance') summary.temperance++;
-      else summary.none++;
-    });
-
-    return summary;
+  const accommodationSummary = {
+    covenant: registrations.filter(r => ['covenant', 'covenant-guest-house', 'pg-hostel', 'camp-a'].includes(r.accommodationType)).length,
+    temperance: registrations.filter(r => r.accommodationType === 'temperance').length,
+    none: registrations.filter(r => !r.accommodationType || r.accommodationType === 'no-accommodation' || r.accommodationType === 'student-free').length,
   };
 
-  const getAbstractCount = () => {
-    return registrations.filter((reg) => reg.hasAbstract && reg.abstractFileUrl).length;
-  };
-
-  const abstractCount = getAbstractCount();
-  const accommodationSummary = getAccommodationSummary();
+  const abstractCount = registrations.filter((reg) => reg.hasAbstract && reg.abstractFileUrl).length;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Registration Tracking</h1>
-          <p className="text-gray-600 mt-2">
-            Comprehensive view of all conference registrations with detailed information
+          <h1 className="text-2xl font-bold text-slate-900">Registration Tracking</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            {loading ? 'Loading...' : `${formatAdminNumber(registrations.length)} registrations`}
           </p>
         </div>
         <div className="flex gap-2">
-          <Button 
-            onClick={downloadAllAbstracts} 
-            variant="outline"
-            disabled={abstractCount === 0}
-          >
-            <FileText className="w-4 h-4 mr-2" />
-            Download Abstract Files ({abstractCount})
+          <Button onClick={downloadAllAbstracts} variant="outline" size="sm" disabled={abstractCount === 0}>
+            <FileText className="w-4 h-4 mr-1.5" />
+            Abstracts ({abstractCount})
           </Button>
-          <Button onClick={exportToCSV} className="bg-green-600 hover:bg-green-700">
-            <Download className="w-4 h-4 mr-2" />
+          <Button onClick={exportToCSV} variant="outline" size="sm">
+            <Download className="w-4 h-4 mr-1.5" />
             Export CSV
           </Button>
         </div>
       </div>
 
-      {/* Accommodation Summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Covenant University
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-blue-600">
-              {formatAdminNumber(accommodationSummary.covenant)}
+        <Card className="border-slate-200">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg bg-blue-50 p-2.5">
+                <Home className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">Covenant University</p>
+                <p className="text-2xl font-bold text-slate-900">{formatAdminNumber(accommodationSummary.covenant)}</p>
+              </div>
             </div>
-            <p className="text-xs text-gray-500 mt-1">registrations</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Temperance Hotel
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-purple-600">
-              {formatAdminNumber(accommodationSummary.temperance)}
+        <Card className="border-slate-200">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg bg-violet-50 p-2.5">
+                <Home className="h-5 w-5 text-violet-600" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">Temperance Hotel</p>
+                <p className="text-2xl font-bold text-slate-900">{formatAdminNumber(accommodationSummary.temperance)}</p>
+              </div>
             </div>
-            <p className="text-xs text-gray-500 mt-1">registrations</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              No Accommodation
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-600">
-              {formatAdminNumber(accommodationSummary.none)}
+        <Card className="border-slate-200">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg bg-slate-50 p-2.5">
+                <Home className="h-5 w-5 text-slate-600" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">No Accommodation</p>
+                <p className="text-2xl font-bold text-slate-900">{formatAdminNumber(accommodationSummary.none)}</p>
+              </div>
             </div>
-            <p className="text-xs text-gray-500 mt-1">registrations</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+      <Card className="border-slate-200">
+        <CardContent className="pt-5 pb-4">
+          <div className="flex flex-col md:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
                 placeholder="Search..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && fetchRegistrations()}
-                className="pl-10"
+                className="pl-9"
               />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Payment Status" />
+              <SelectTrigger className="w-full md:w-[160px]">
+                <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
@@ -393,7 +286,7 @@ const RegistrationTracking = () => {
               </SelectContent>
             </Select>
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger>
+              <SelectTrigger className="w-full md:w-[180px]">
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
               <SelectContent>
@@ -405,7 +298,7 @@ const RegistrationTracking = () => {
               </SelectContent>
             </Select>
             <Select value={accommodationFilter} onValueChange={setAccommodationFilter}>
-              <SelectTrigger>
+              <SelectTrigger className="w-full md:w-[180px]">
                 <SelectValue placeholder="Accommodation" />
               </SelectTrigger>
               <SelectContent>
@@ -415,106 +308,79 @@ const RegistrationTracking = () => {
                 <SelectItem value="none">No Accommodation</SelectItem>
               </SelectContent>
             </Select>
-            <Button onClick={fetchRegistrations} className="w-full">
-              <Search className="w-4 h-4 mr-2" />
-              Search
-            </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Registrations Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {formatAdminNumber(registrations.length)} Registration{registrations.length !== 1 ? 's' : ''}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="flex justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
-            </div>
-          ) : registrations.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              No registrations found
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Name</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Email</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Phone</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Category</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Accommodation</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Status</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {registrations.map((reg) => (
-                    <tr key={reg.id} className="border-b hover:bg-gray-50">
-                      <td className="py-3 px-4">
-                        {reg.firstName} {reg.surname}
-                      </td>
-                      <td className="py-3 px-4 text-sm text-gray-600">{reg.email}</td>
-                      <td className="py-3 px-4 text-sm">{reg.phone}</td>
-                      <td className="py-3 px-4 text-sm">{formatAdminCategory(reg.category)}</td>
-                      <td className="py-3 px-4">
-                        {reg.accommodationType ? (
-                          <Badge variant="outline">
-                            {formatAccommodation(reg.accommodationType)}
-                          </Badge>
-                        ) : (
-                          <span className="text-gray-400 text-xs">None</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-4">
-                        <PaymentStatusBadge status={reg.paymentStatus} />
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex gap-2">
-                          {reg.hasAbstract && reg.abstractFileUrl && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => downloadDocument(
-                                reg.abstractFileUrl,
-                                `abstract-${reg.firstName}-${reg.surname}.pdf`
-                              )}
-                            >
-                              <FileText className="w-3 h-3 mr-1" />
-                              Download
-                            </Button>
-                          )}
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => viewDetails(reg)}
-                          >
-                            <Eye className="w-3 h-3 mr-1" />
-                            View
+      <div className="border border-slate-200 rounded-xl bg-white overflow-hidden">
+        {loading ? (
+          <div className="flex justify-center py-16">
+            <div className="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-slate-700" />
+          </div>
+        ) : registrations.length === 0 ? (
+          <div className="text-center py-16 text-slate-500">No registrations found</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="text-left py-2.5 px-4 font-semibold text-slate-600">Name</th>
+                  <th className="text-left py-2.5 px-4 font-semibold text-slate-600">Email</th>
+                  <th className="text-left py-2.5 px-4 font-semibold text-slate-600">Phone</th>
+                  <th className="text-left py-2.5 px-4 font-semibold text-slate-600">Category</th>
+                  <th className="text-left py-2.5 px-4 font-semibold text-slate-600">Accommodation</th>
+                  <th className="text-center py-2.5 px-4 font-semibold text-slate-600">Status</th>
+                  <th className="text-right py-2.5 px-4 font-semibold text-slate-600">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {registrations.map((reg) => (
+                  <tr key={reg.id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                    <td className="py-2.5 px-4">
+                      <p className="font-medium text-slate-900">{reg.firstName} {reg.surname}</p>
+                    </td>
+                    <td className="py-2.5 px-4 text-slate-600 max-w-[200px] truncate">{reg.email}</td>
+                    <td className="py-2.5 px-4 text-slate-600">{reg.phone}</td>
+                    <td className="py-2.5 px-4">
+                      <Badge variant="outline" className="text-xs font-normal">{formatAdminCategory(reg.category)}</Badge>
+                    </td>
+                    <td className="py-2.5 px-4">
+                      {reg.accommodationType ? (
+                        <Badge variant="outline" className="text-xs font-normal">{formatAccommodation(reg.accommodationType)}</Badge>
+                      ) : (
+                        <span className="text-slate-400 text-xs">None</span>
+                      )}
+                    </td>
+                    <td className="py-2.5 px-4 text-center">
+                      <PaymentStatusBadge status={reg.paymentStatus} />
+                    </td>
+                    <td className="py-2.5 px-4 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        {reg.hasAbstract && reg.abstractFileUrl && (
+                          <Button size="sm" variant="ghost" onClick={() => downloadDocument(reg.abstractFileUrl, `abstract-${reg.firstName}-${reg.surname}.pdf`)} className="h-7 text-xs text-slate-600">
+                            <FileText className="w-3 h-3 mr-1" />
+                            Abstract
                           </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                        )}
+                        <Button size="sm" variant="outline" onClick={() => viewDetails(reg)} className="h-7 text-xs">
+                          <Eye className="w-3 h-3 mr-1" />
+                          View
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
-      {/* Details Modal */}
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Registration Details</DialogTitle>
+            <DialogTitle className="text-base text-slate-900">Registration Details</DialogTitle>
           </DialogHeader>
-          
           {selectedRegistration && (
             <Tabs defaultValue="personal" className="w-full">
               <TabsList className="grid w-full grid-cols-5">
@@ -528,47 +394,42 @@ const RegistrationTracking = () => {
               <TabsContent value="personal" className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-600">Full Name</label>
-                    <p className="text-base">
-                      {selectedRegistration.firstName} {selectedRegistration.surname} {selectedRegistration.otherNames}
-                    </p>
+                    <label className="text-sm font-medium text-slate-600">Full Name</label>
+                    <p className="text-base text-slate-900">{selectedRegistration.firstName} {selectedRegistration.surname} {selectedRegistration.otherNames}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600">Email</label>
-                    <p className="text-base">{selectedRegistration.email}</p>
+                    <label className="text-sm font-medium text-slate-600">Email</label>
+                    <p className="text-base text-slate-900">{selectedRegistration.email}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600">Phone</label>
-                    <p className="text-base">{selectedRegistration.phone}</p>
+                    <label className="text-sm font-medium text-slate-600">Phone</label>
+                    <p className="text-base text-slate-900">{selectedRegistration.phone}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600">Age</label>
-                    <p className="text-base">{selectedRegistration.age}</p>
+                    <label className="text-sm font-medium text-slate-600">Age</label>
+                    <p className="text-base text-slate-900">{selectedRegistration.age}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600">Sex</label>
-                    <p className="text-base">{selectedRegistration.sex}</p>
+                    <label className="text-sm font-medium text-slate-600">Sex</label>
+                    <p className="text-base text-slate-900">{selectedRegistration.sex}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600">Category</label>
-                    <p className="text-base">{formatAdminCategory(selectedRegistration.category)}</p>
+                    <label className="text-sm font-medium text-slate-600">Category</label>
+                    <p className="text-base text-slate-900">{formatAdminCategory(selectedRegistration.category)}</p>
                   </div>
                 </div>
-
                 {selectedRegistration.category === 'doctor-with-spouse' && (
                   <>
-                    <hr className="my-4" />
-                    <h3 className="font-semibold text-lg mb-3">Spouse Details</h3>
+                    <hr className="border-slate-200" />
+                    <h3 className="font-semibold text-base text-slate-900">Spouse Details</h3>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="text-sm font-medium text-gray-600">Spouse Name</label>
-                        <p className="text-base">
-                          {selectedRegistration.spouseFirstName} {selectedRegistration.spouseSurname} {selectedRegistration.spouseOtherNames}
-                        </p>
+                        <label className="text-sm font-medium text-slate-600">Spouse Name</label>
+                        <p className="text-base text-slate-900">{selectedRegistration.spouseFirstName} {selectedRegistration.spouseSurname} {selectedRegistration.spouseOtherNames}</p>
                       </div>
                       <div>
-                        <label className="text-sm font-medium text-gray-600">Spouse Email</label>
-                        <p className="text-base">{selectedRegistration.spouseEmail || '-'}</p>
+                        <label className="text-sm font-medium text-slate-600">Spouse Email</label>
+                        <p className="text-base text-slate-900">{selectedRegistration.spouseEmail || '-'}</p>
                       </div>
                     </div>
                   </>
@@ -578,20 +439,20 @@ const RegistrationTracking = () => {
               <TabsContent value="cmda" className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-600">Chapter</label>
-                    <p className="text-base">{selectedRegistration.chapter}</p>
+                    <label className="text-sm font-medium text-slate-600">Chapter</label>
+                    <p className="text-base text-slate-900">{selectedRegistration.chapter}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600">Chapter of Graduation</label>
-                    <p className="text-base">{selectedRegistration.chapterOfGraduation || '-'}</p>
+                    <label className="text-sm font-medium text-slate-600">Chapter of Graduation</label>
+                    <p className="text-base text-slate-900">{selectedRegistration.chapterOfGraduation || '-'}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600">Current Leadership Post</label>
-                    <p className="text-base">{selectedRegistration.currentLeadershipPost || '-'}</p>
+                    <label className="text-sm font-medium text-slate-600">Current Leadership Post</label>
+                    <p className="text-base text-slate-900">{selectedRegistration.currentLeadershipPost || '-'}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600">Previous Leadership Post</label>
-                    <p className="text-base">{selectedRegistration.previousLeadershipPost || '-'}</p>
+                    <label className="text-sm font-medium text-slate-600">Previous Leadership Post</label>
+                    <p className="text-base text-slate-900">{selectedRegistration.previousLeadershipPost || '-'}</p>
                   </div>
                 </div>
               </TabsContent>
@@ -599,35 +460,33 @@ const RegistrationTracking = () => {
               <TabsContent value="accommodation" className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-600">Date of Arrival</label>
-                    <p className="text-base flex items-center gap-2">
-                      <Calendar className="w-4 h-4" />
+                    <label className="text-sm font-medium text-slate-600">Date of Arrival</label>
+                    <p className="text-base text-slate-900 flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-slate-400" />
                       {formatAdminDate(selectedRegistration.dateOfArrival)}
                     </p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600">Accommodation Type</label>
-                    <p className="text-base flex items-center gap-2">
-                      <Home className="w-4 h-4" />
+                    <label className="text-sm font-medium text-slate-600">Accommodation Type</label>
+                    <p className="text-base text-slate-900 flex items-center gap-2">
+                      <Home className="w-4 h-4 text-slate-400" />
                       {formatAccommodation(selectedRegistration.accommodationType)}
                     </p>
                   </div>
                   {selectedRegistration.accommodationType && (
                     <>
                       <div>
-                        <label className="text-sm font-medium text-gray-600">Room Type</label>
-                        <p className="text-base">
-                          {selectedRegistration.covenantRoomType || selectedRegistration.temperanceRoomType || '-'}
-                        </p>
+                        <label className="text-sm font-medium text-slate-600">Room Type</label>
+                        <p className="text-base text-slate-900">{selectedRegistration.covenantRoomType || selectedRegistration.temperanceRoomType || '-'}</p>
                       </div>
                       <div>
-                        <label className="text-sm font-medium text-gray-600">Room Sharing</label>
-                        <p className="text-base">{selectedRegistration.roomSharing || '-'}</p>
+                        <label className="text-sm font-medium text-slate-600">Room Sharing</label>
+                        <p className="text-base text-slate-900">{selectedRegistration.roomSharing || '-'}</p>
                       </div>
                       {selectedRegistration.roommateName && (
                         <div className="col-span-2">
-                          <label className="text-sm font-medium text-gray-600">Roommate Name</label>
-                          <p className="text-base">{selectedRegistration.roommateName}</p>
+                          <label className="text-sm font-medium text-slate-600">Roommate Name</label>
+                          <p className="text-base text-slate-900">{selectedRegistration.roommateName}</p>
                         </div>
                       )}
                     </>
@@ -638,56 +497,48 @@ const RegistrationTracking = () => {
               <TabsContent value="payment" className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-600">Payment Status</label>
-                    <div className="mt-1">
-                      <PaymentStatusBadge status={selectedRegistration.paymentStatus} />
-                    </div>
+                    <label className="text-sm font-medium text-slate-600">Payment Status</label>
+                    <div className="mt-1"><PaymentStatusBadge status={selectedRegistration.paymentStatus} /></div>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600">Payment Reference</label>
-                    <p className="text-base font-mono text-sm">{selectedRegistration.paymentReference}</p>
+                    <label className="text-sm font-medium text-slate-600">Payment Reference</label>
+                    <p className="text-sm font-mono text-slate-900">{selectedRegistration.paymentReference}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600">Base Fee</label>
-                    <p className="text-base">{formatAdminCurrency(selectedRegistration.baseFee)}</p>
+                    <label className="text-sm font-medium text-slate-600">Base Fee</label>
+                    <p className="text-base text-slate-900">{formatAdminCurrency(selectedRegistration.baseFee)}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600">Late Fee</label>
-                    <p className="text-base">{formatAdminCurrency(selectedRegistration.lateFee)}</p>
+                    <label className="text-sm font-medium text-slate-600">Late Fee</label>
+                    <p className="text-base text-slate-900">{formatAdminCurrency(selectedRegistration.lateFee)}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600">Total Amount</label>
-                    <p className="text-lg font-bold text-green-600">
-                      {formatAdminCurrency(selectedRegistration.totalAmount)}
-                    </p>
+                    <label className="text-sm font-medium text-slate-600">Total Amount</label>
+                    <p className="text-lg font-bold text-emerald-600">{formatAdminCurrency(selectedRegistration.totalAmount)}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600">Paid At</label>
-                    <p className="text-base">
-                      {formatAdminDateTime(selectedRegistration.paidAt)}
-                    </p>
+                    <label className="text-sm font-medium text-slate-600">Paid At</label>
+                    <p className="text-base text-slate-900">{formatAdminDateTime(selectedRegistration.paidAt)}</p>
                   </div>
                   {selectedRegistration.splitCode && (
                     <div className="col-span-2">
-                      <label className="text-sm font-medium text-gray-600">Split Code Used</label>
-                      <Badge variant="outline" className="text-purple-600 border-purple-300 ml-2">
-                        {selectedRegistration.splitCode}
-                      </Badge>
+                      <label className="text-sm font-medium text-slate-600">Split Code Used</label>
+                      <Badge variant="outline" className="text-xs font-normal ml-2">{selectedRegistration.splitCode}</Badge>
                     </div>
                   )}
                   <div>
-                    <label className="text-sm font-medium text-gray-600">Attendance Verified</label>
-                    <p className="text-base">
+                    <label className="text-sm font-medium text-slate-600">Attendance Verified</label>
+                    <p className="text-base text-slate-900">
                       {selectedRegistration.attendanceVerified ? (
-                        <Badge variant="default">Verified</Badge>
+                        <Badge variant="default" className="bg-emerald-600">Verified</Badge>
                       ) : (
                         <Badge variant="secondary">Not Verified</Badge>
                       )}
                     </p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600">Registered At</label>
-                    <p className="text-base">{formatAdminDateTime(selectedRegistration.createdAt)}</p>
+                    <label className="text-sm font-medium text-slate-600">Registered At</label>
+                    <p className="text-base text-slate-900">{formatAdminDateTime(selectedRegistration.createdAt)}</p>
                   </div>
                 </div>
               </TabsContent>
@@ -695,57 +546,44 @@ const RegistrationTracking = () => {
               <TabsContent value="documents" className="space-y-4">
                 <div className="space-y-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-600">Abstract Submission</label>
-                    <p className="text-base mb-2">
+                    <label className="text-sm font-medium text-slate-600">Abstract Submission</label>
+                    <p className="text-base text-slate-900 mb-2">
                       {selectedRegistration.hasAbstract ? (
-                        <Badge variant="default">Submitted</Badge>
+                        <Badge variant="default" className="bg-emerald-600">Submitted</Badge>
                       ) : (
                         <Badge variant="secondary">Not Submitted</Badge>
                       )}
                     </p>
                   </div>
-
                   {selectedRegistration.hasAbstract && (
                     <>
                       <div>
-                        <label className="text-sm font-medium text-gray-600">Presentation Title</label>
-                        <p className="text-base">{selectedRegistration.presentationTitle || '-'}</p>
+                        <label className="text-sm font-medium text-slate-600">Presentation Title</label>
+                        <p className="text-base text-slate-900">{selectedRegistration.presentationTitle || '-'}</p>
                       </div>
-
                       {selectedRegistration.abstractFileUrl && (
                         <div>
-                          <label className="text-sm font-medium text-gray-600">Abstract Document</label>
+                          <label className="text-sm font-medium text-slate-600">Abstract Document</label>
                           <div className="mt-2">
-                            <Button
-                              onClick={() => downloadDocument(
-                                selectedRegistration.abstractFileUrl,
-                                `abstract-${selectedRegistration.firstName}-${selectedRegistration.surname}.pdf`
-                              )}
-                              variant="outline"
-                              className="w-full"
-                            >
+                            <Button onClick={() => downloadDocument(selectedRegistration.abstractFileUrl, `abstract-${selectedRegistration.firstName}-${selectedRegistration.surname}.pdf`)} variant="outline" className="w-full">
                               <FileText className="w-4 h-4 mr-2" />
                               Download Abstract
                             </Button>
                           </div>
                         </div>
                       )}
-
                       {!selectedRegistration.abstractFileUrl && (
                         <div>
-                          <label className="text-sm font-medium text-gray-600">Abstract Document</label>
-                          <p className="text-sm text-amber-700 mt-1">
-                            This registration has a presentation topic but no uploaded file.
-                          </p>
+                          <label className="text-sm font-medium text-slate-600">Abstract Document</label>
+                          <p className="text-sm text-amber-600 mt-1">This registration has a presentation topic but no uploaded file.</p>
                         </div>
                       )}
                     </>
                   )}
-
                   {!selectedRegistration.hasAbstract && (
-                    <div className="text-center py-8 text-gray-500">
-                      <FileText className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                      <p>No documents uploaded</p>
+                    <div className="text-center py-8 text-slate-500">
+                      <FileText className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                      <p className="text-sm">No documents uploaded</p>
                     </div>
                   )}
                 </div>
