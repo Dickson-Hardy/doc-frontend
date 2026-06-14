@@ -13,12 +13,12 @@ import {
 } from '@/components/ui/select';
 import { adminApi } from '@/services/admin';
 import { PaymentStatusBadge } from '@/components/admin/PaymentStatusBadge';
+import { useToast } from '@/hooks/use-toast';
 import {
   formatAdminCategory,
   formatAdminCurrency,
   formatAdminDate,
   formatAdminNumber,
-  formatAccommodation,
 } from '@/lib/admin-format';
 
 interface Registration {
@@ -51,6 +51,7 @@ const Registrations = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
   const [total, setTotal] = useState(0);
+  const { toast } = useToast();
 
   const totalPages = Math.ceil(total / pageSize);
 
@@ -92,12 +93,11 @@ const Registrations = () => {
   };
 
   const handleResendEmail = async (registrationId: string, email: string) => {
-    if (!confirm(`Resend confirmation email to ${email}?`)) return;
     try {
       await adminApi.resendEmail(registrationId);
-      alert('Confirmation email resent!');
+      toast({ title: 'Sent', description: `Confirmation email resent to ${email}` });
     } catch (error: any) {
-      alert(`Failed: ${error.message}`);
+      toast({ title: 'Failed', description: error.message, variant: 'destructive' });
     }
   };
 
@@ -105,13 +105,13 @@ const Registrations = () => {
     try {
       const response = await adminApi.requeryPayment(registrationId);
       if (response.data.status === 'success') {
-        alert(`${response.data.message}`);
+        toast({ title: 'Verified', description: response.data.message });
         await fetchRegistrations();
       } else {
-        alert(`${response.data.message}`);
+        toast({ title: 'Not found', description: response.data.message, variant: 'destructive' });
       }
     } catch (error: any) {
-      alert(`Failed: ${error.message}`);
+      toast({ title: 'Failed', description: error.message, variant: 'destructive' });
     }
   };
 
@@ -146,7 +146,7 @@ const Registrations = () => {
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Export failed:', error);
-      alert('Failed to export. Try again.');
+      toast({ title: 'Export failed', description: 'Try again.', variant: 'destructive' });
     }
   };
 

@@ -103,26 +103,25 @@ const Scanner = () => {
       await adminApi.verifyAttendance(result.registrationId);
       setResult({ ...result, verified: true });
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Verification failed');
+      setError(err.message || 'Verification failed');
     } finally {
       setVerifying(false);
     }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">QR Code Scanner</h1>
-        <p className="text-gray-600 mt-2">Scan participant QR codes for check-in</p>
+        <h1 className="text-2xl font-bold text-slate-900">QR Scanner</h1>
+        <p className="text-sm text-slate-500 mt-1">Scan participant QR codes for check-in</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Scanner Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Camera className="w-5 h-5" />
-              Camera Scanner
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <Card className="border-slate-200">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base text-slate-900 flex items-center gap-2">
+              <Camera className="h-4 w-4" />
+              Camera
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -179,9 +178,9 @@ const Scanner = () => {
         </Card>
 
         {/* Result Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Scan Result</CardTitle>
+        <Card className="border-slate-200">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base text-slate-900">Scan Result</CardTitle>
           </CardHeader>
           <CardContent>
             {result ? (
@@ -204,18 +203,18 @@ const Scanner = () => {
                   )}
                 </div>
 
-                <div className="space-y-3 bg-gray-50 p-4 rounded-lg">
+                <div className="space-y-3 bg-slate-50 p-4 rounded-lg">
                   <div>
-                    <p className="text-sm text-gray-600">Name</p>
-                    <p className="font-medium">{result.name}</p>
+                    <p className="text-sm text-slate-600">Name</p>
+                    <p className="font-medium text-slate-900">{result.name}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Email</p>
-                    <p className="font-medium">{result.email}</p>
+                    <p className="text-sm text-slate-600">Email</p>
+                    <p className="font-medium text-slate-900">{result.email}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Registration ID</p>
-                    <p className="font-mono text-sm">{result.registrationId}</p>
+                    <p className="text-sm text-slate-600">Registration ID</p>
+                    <p className="font-mono text-sm text-slate-900">{result.registrationId}</p>
                   </div>
                 </div>
 
@@ -241,9 +240,9 @@ const Scanner = () => {
                 </Button>
               </div>
             ) : (
-              <div className="text-center py-12 text-gray-500">
-                <QrCode className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                <p>Scan a QR code to see participant details</p>
+              <div className="text-center py-12 text-slate-500">
+                <QrCode className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <p className="text-sm">Scan a QR code to see participant details</p>
               </div>
             )}
           </CardContent>
