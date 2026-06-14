@@ -92,11 +92,11 @@ const RegistrationTracking = () => {
       if (categoryFilter !== 'all') params.category = categoryFilter;
       if (search) params.search = search;
 
-      let data = await adminApi.getRegistrations(params);
+      let { data: rowData } = await adminApi.getRegistrations({ ...params, limit: 1000 });
 
       // Filter by accommodation type if needed
       if (accommodationFilter !== 'all') {
-        data = data.filter((reg: Registration) => {
+        rowData = rowData.filter((reg: Registration) => {
           if (accommodationFilter === 'covenant') {
             return ['covenant', 'covenant-guest-house', 'pg-hostel', 'camp-a'].includes(
               reg.accommodationType,
@@ -119,7 +119,7 @@ const RegistrationTracking = () => {
         });
       }
 
-      setRegistrations(data);
+      setRegistrations(rowData);
     } catch (error) {
       console.error('Failed to fetch registrations:', error);
       toast({
