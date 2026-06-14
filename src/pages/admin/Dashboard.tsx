@@ -1,12 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import {
-  Activity,
-  Clock,
-  DollarSign,
-  TrendingUp,
-  UserX,
-  Users,
-} from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Users, DollarSign, Clock, UserX, TrendingUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { adminApi } from '@/services/admin';
 import { formatAdminCurrency, formatAdminNumber } from '@/lib/admin-format';
@@ -17,25 +10,8 @@ interface Stats {
   pending: number;
   abandoned: number;
   revenue: number;
-  splitPayments?: number;
-}
-
-interface StatusMetric {
-  label: string;
-  value: number;
-  percentage: number;
-  barClassName: string;
-  valueClassName: string;
-}
-
-interface StatCard {
-  title: string;
-  value: number;
-  subtitle: string;
-  icon: typeof Users;
-  iconClassName: string;
-  barClassName: string;
-  percentage: number;
+  splitPayments: number;
+  categories: Record<string, number>;
 }
 
 const Dashboard = () => {
@@ -43,297 +19,187 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    void fetchStats();
+    adminApi.getStats()
+      .then(setStats)
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, []);
-
-  const fetchStats = async () => {
-    try {
-      const data = await adminApi.getStats();
-      setStats(data);
-    } catch (error) {
-      console.error('Failed to fetch stats:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const totalRegistrations = stats?.total || 0;
-  const paidRegistrations = stats?.paid || 0;
-  const pendingRegistrations = stats?.pending || 0;
-  const abandonedRegistrations = stats?.abandoned || 0;
-  const splitPayments = stats?.splitPayments || 0;
-  const totalRevenue = stats?.revenue || 0;
-
-  const clampPercentage = (value: number) => Math.min(100, Math.max(0, value));
-
-  const paidPercentage = totalRegistrations
-    ? (paidRegistrations / totalRegistrations) * 100
-    : 0;
-  const pendingPercentage = totalRegistrations
-    ? (pendingRegistrations / totalRegistrations) * 100
-    : 0;
-  const abandonedPercentage = totalRegistrations
-    ? (abandonedRegistrations / totalRegistrations) * 100
-    : 0;
-  const splitAdoptionPercentage = paidRegistrations
-    ? (splitPayments / paidRegistrations) * 100
-    : 0;
-
-  const averageRevenuePerPaid = paidRegistrations
-    ? totalRevenue / paidRegistrations
-    : 0;
-
-  const statCards = useMemo<StatCard[]>(
-    () => [
-      {
-        title: 'Total Registrations',
-        value: totalRegistrations,
-        subtitle: 'All submitted entries',
-        icon: Users,
-        iconClassName: 'bg-blue-100 text-blue-700',
-        barClassName: 'from-blue-500 to-cyan-500',
-        percentage: totalRegistrations > 0 ? 100 : 0,
-      },
-      {
-        title: 'Paid',
-        value: paidRegistrations,
-        subtitle: `${paidPercentage.toFixed(1)}% of total`,
-        icon: DollarSign,
-        iconClassName: 'bg-green-100 text-green-700',
-        barClassName: 'from-emerald-500 to-green-500',
-        percentage: clampPercentage(paidPercentage),
-      },
-      {
-        title: 'Pending',
-        value: pendingRegistrations,
-        subtitle: 'Needs payment completion',
-        icon: Clock,
-        iconClassName: 'bg-amber-100 text-amber-700',
-        barClassName: 'from-amber-500 to-yellow-500',
-        percentage: clampPercentage(pendingPercentage),
-      },
-      {
-        title: 'Abandoned',
-        value: abandonedRegistrations,
-        subtitle: 'Incomplete registrations',
-        icon: UserX,
-        iconClassName: 'bg-rose-100 text-rose-700',
-        barClassName: 'from-rose-500 to-red-500',
-        percentage: clampPercentage(abandonedPercentage),
-      },
-    ],
-    [
-      abandonedPercentage,
-      abandonedRegistrations,
-      paidPercentage,
-      paidRegistrations,
-      pendingPercentage,
-      pendingRegistrations,
-      totalRegistrations,
-    ],
-  );
-
-  const statusMetrics = useMemo<StatusMetric[]>(
-    () => [
-      {
-        label: 'Paid',
-        value: paidRegistrations,
-        percentage: clampPercentage(paidPercentage),
-        barClassName: 'bg-gradient-to-r from-emerald-500 to-green-500',
-        valueClassName: 'text-emerald-700',
-      },
-      {
-        label: 'Pending',
-        value: pendingRegistrations,
-        percentage: clampPercentage(pendingPercentage),
-        barClassName: 'bg-gradient-to-r from-amber-500 to-yellow-500',
-        valueClassName: 'text-amber-700',
-      },
-      {
-        label: 'Abandoned',
-        value: abandonedRegistrations,
-        percentage: clampPercentage(abandonedPercentage),
-        barClassName: 'bg-gradient-to-r from-rose-500 to-red-500',
-        valueClassName: 'text-rose-700',
-      },
-    ],
-    [
-      abandonedPercentage,
-      abandonedRegistrations,
-      paidPercentage,
-      paidRegistrations,
-      pendingPercentage,
-      pendingRegistrations,
-    ],
-  );
 
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <div className="h-12 w-12 animate-spin rounded-full border-4 border-slate-200 border-t-slate-700" />
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-slate-700" />
       </div>
     );
   }
 
+  if (!stats) {
+    return <div className="text-center py-12 text-slate-500">Failed to load dashboard</div>;
+  }
+
+  const paidPct = stats.total ? (stats.paid / stats.total) * 100 : 0;
+  const pendingPct = stats.total ? (stats.pending / stats.total) * 100 : 0;
+  const abandonedPct = stats.total ? (stats.abandoned / stats.total) * 100 : 0;
+  const avgRevenue = stats.paid ? stats.revenue / stats.paid : 0;
+
+  const categoryList = Object.entries(stats.categories)
+    .sort(([, a], [, b]) => b - a)
+    .map(([cat, count]) => ({
+      label: cat === 'doctor-with-spouse' ? 'Doctor with Spouse'
+        : cat === 'junior-doctor' ? 'Junior Doctor'
+        : cat === 'senior-doctor' ? 'Senior Doctor'
+        : cat.charAt(0).toUpperCase() + cat.slice(1),
+      count,
+      pct: stats.total ? (count / stats.total) * 100 : 0,
+    }));
+
   return (
-    <div className="space-y-6">
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Conference Admin
-            </p>
-            <h1 className="mt-2 text-3xl font-bold text-slate-900">Dashboard</h1>
-            <p className="mt-2 max-w-2xl text-sm text-slate-600">
-              Overview of registrations, payments, and revenue.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 sm:min-w-[340px]">
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <p className="text-xs text-slate-600">Revenue</p>
-              <p className="mt-1 text-lg font-semibold text-slate-900">
-                {formatAdminCurrency(totalRevenue)}
-              </p>
-            </div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <p className="text-xs text-slate-600">Conversion</p>
-              <p className="mt-1 text-lg font-semibold text-slate-900">
-                {paidPercentage.toFixed(1)}%
-              </p>
-            </div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <p className="text-xs text-slate-600">Pending</p>
-              <p className="mt-1 text-lg font-semibold text-slate-900">
-                {formatAdminNumber(pendingRegistrations)}
-              </p>
-            </div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <p className="text-xs text-slate-600">Abandoned</p>
-              <p className="mt-1 text-lg font-semibold text-slate-900">
-                {formatAdminNumber(abandonedRegistrations)}
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {statCards.map((card) => {
-          const Icon = card.icon;
-          const barWidth = card.percentage === 0 ? 0 : Math.max(6, card.percentage);
-
-          return (
-            <Card key={card.title} className="border border-slate-200 bg-white shadow-sm">
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-medium text-slate-500">{card.title}</p>
-                    <p className="mt-1 text-3xl font-bold text-slate-900">
-                      {formatAdminNumber(card.value)}
-                    </p>
-                    <p className="mt-1 text-xs text-slate-500">{card.subtitle}</p>
-                  </div>
-                  <div className={`rounded-lg p-2.5 ${card.iconClassName}`}>
-                    <Icon className="h-5 w-5" />
-                  </div>
-                </div>
-
-                <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
-                  <div
-                    className={`h-full rounded-full bg-gradient-to-r ${card.barClassName}`}
-                    style={{ width: `${barWidth}%` }}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
+    <div className="space-y-5">
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
+        <p className="text-sm text-slate-500 mt-1">Conference registration overview</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <Card className="border border-slate-200 bg-white shadow-sm">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center justify-between text-slate-900">
-              Revenue
-              <TrendingUp className="h-5 w-5 text-emerald-600" />
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
-                Total Revenue
-              </p>
-              <p className="mt-1 text-3xl font-bold text-emerald-700">
-                {formatAdminCurrency(totalRevenue)}
-              </p>
-              <p className="mt-1 text-sm text-emerald-900/80">
-                Average per paid registration: {formatAdminCurrency(averageRevenuePerPaid)}
-              </p>
-            </div>
-
-            <div>
-              <div className="mb-2 flex items-center justify-between text-sm">
-                <span className="text-slate-600">                Paystack split payments</span>
-                <span className="font-semibold text-slate-900">
-                  {splitAdoptionPercentage.toFixed(1)}%
-                </span>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="border-slate-200">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg bg-blue-50 p-2.5">
+                <Users className="h-5 w-5 text-blue-600" />
               </div>
-              <div className="h-2 overflow-hidden rounded-full bg-emerald-100">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500"
-                  style={{
-                    width: `${
-                      splitAdoptionPercentage === 0
-                        ? 0
-                        : Math.max(6, clampPercentage(splitAdoptionPercentage))
-                    }%`,
-                  }}
-                />
+              <div>
+                <p className="text-xs text-slate-500">Total</p>
+                <p className="text-2xl font-bold text-slate-900">{formatAdminNumber(stats.total)}</p>
               </div>
-              <p className="mt-2 text-xs text-slate-500">
-                {formatAdminNumber(splitPayments)} registrations using Paystack split out of{' '}
-                {formatAdminNumber(paidRegistrations)} paid.
-              </p>
             </div>
           </CardContent>
         </Card>
+        <Card className="border-slate-200">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg bg-emerald-50 p-2.5">
+                <DollarSign className="h-5 w-5 text-emerald-600" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">Paid</p>
+                <p className="text-2xl font-bold text-slate-900">{formatAdminNumber(stats.paid)}</p>
+                <p className="text-xs text-slate-400">{paidPct.toFixed(1)}% of total</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-slate-200">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg bg-amber-50 p-2.5">
+                <Clock className="h-5 w-5 text-amber-600" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">Pending</p>
+                <p className="text-2xl font-bold text-slate-900">{formatAdminNumber(stats.pending)}</p>
+                <p className="text-xs text-slate-400">{pendingPct.toFixed(1)}% of total</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-slate-200">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg bg-rose-50 p-2.5">
+                <UserX className="h-5 w-5 text-rose-600" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">Abandoned</p>
+                <p className="text-2xl font-bold text-slate-900">{formatAdminNumber(stats.abandoned)}</p>
+                <p className="text-xs text-slate-400">{abandonedPct.toFixed(1)}% of total</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
-        <Card className="border border-slate-200 bg-white shadow-sm">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <Card className="border-slate-200">
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center justify-between text-slate-900">
-              Registration Status
-              <Activity className="h-5 w-5 text-indigo-600" />
+            <CardTitle className="text-base flex items-center gap-2 text-slate-900">
+              <TrendingUp className="h-4 w-4 text-emerald-600" />
+              Revenue
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {statusMetrics.map((metric) => {
-              const width = metric.percentage === 0 ? 0 : Math.max(6, metric.percentage);
-
-              return (
-                <div key={metric.label}>
-                  <div className="mb-2 flex items-center justify-between text-sm">
-                    <span className="text-slate-600">{metric.label}</span>
-                    <span className={`font-semibold ${metric.valueClassName}`}>
-                      {formatAdminNumber(metric.value)} ({metric.percentage.toFixed(1)}%)
-                    </span>
-                  </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-                    <div
-                      className={`h-full rounded-full ${metric.barClassName}`}
-                      style={{ width: `${width}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
-              {formatAdminNumber(totalRegistrations)} total registrations.
+            <div className="rounded-lg bg-emerald-50 border border-emerald-100 p-4">
+              <p className="text-xs font-medium text-emerald-700 uppercase tracking-wide">Total Revenue</p>
+              <p className="text-3xl font-bold text-emerald-700 mt-1">{formatAdminCurrency(stats.revenue)}</p>
+              <p className="text-sm text-emerald-600/80 mt-1">
+                Average per paid: {formatAdminCurrency(avgRevenue)}
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg border border-slate-200 p-3">
+                <p className="text-xs text-slate-500">Paid registrations</p>
+                <p className="text-lg font-semibold text-slate-900">{formatAdminNumber(stats.paid)}</p>
+              </div>
+              <div className="rounded-lg border border-slate-200 p-3">
+                <p className="text-xs text-slate-500">Split payments</p>
+                <p className="text-lg font-semibold text-slate-900">{formatAdminNumber(stats.splitPayments)}</p>
+              </div>
             </div>
           </CardContent>
         </Card>
+
+        <Card className="border-slate-200">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base text-slate-900">Registration Status</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {[
+              { label: 'Paid', value: stats.paid, pct: paidPct, color: 'bg-emerald-500' },
+              { label: 'Pending', value: stats.pending, pct: pendingPct, color: 'bg-amber-500' },
+              { label: 'Abandoned', value: stats.abandoned, pct: abandonedPct, color: 'bg-rose-500' },
+            ].map((item) => (
+              <div key={item.label}>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-sm text-slate-600">{item.label}</span>
+                  <span className="text-sm font-semibold text-slate-900">
+                    {formatAdminNumber(item.value)} ({item.pct.toFixed(1)}%)
+                  </span>
+                </div>
+                <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full ${item.color} transition-all`}
+                    style={{ width: `${item.pct === 0 ? 0 : Math.max(4, item.pct)}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
       </div>
+
+      {categoryList.length > 0 && (
+        <Card className="border-slate-200">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base text-slate-900">By Category</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {categoryList.map((cat) => (
+                <div key={cat.label} className="rounded-lg border border-slate-200 p-3">
+                  <p className="text-xs text-slate-500 truncate">{cat.label}</p>
+                  <p className="text-xl font-bold text-slate-900 mt-1">{formatAdminNumber(cat.count)}</p>
+                  <div className="mt-2 h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-500"
+                      style={{ width: `${cat.pct === 0 ? 0 : Math.max(4, cat.pct)}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1">{cat.pct.toFixed(1)}%</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

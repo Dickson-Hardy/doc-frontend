@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { Search, RefreshCw, Download } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useEffect, useState, useCallback } from 'react';
+import { Search, RefreshCw, Download, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,14 +11,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from '@/components/ui/pagination';
 import { adminApi } from '@/services/admin';
 import { PaymentStatusBadge } from '@/components/admin/PaymentStatusBadge';
 import {
@@ -28,8 +20,6 @@ import {
   formatAdminNumber,
   formatAccommodation,
 } from '@/lib/admin-format';
-
-const PAGE_SIZE = 50;
 
 interface Registration {
   id: string;
@@ -50,6 +40,8 @@ interface Registration {
   splitCode?: string;
 }
 
+const PAGE_SIZES = [25, 50, 100, 200];
+
 const Registrations = () => {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,21 +49,18 @@ const Registrations = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
   const [total, setTotal] = useState(0);
 
-  useEffect(() => {
-    fetchRegistrations();
-  }, [statusFilter, categoryFilter, page]);
+  const totalPages = Math.ceil(total / pageSize);
 
-  const totalPages = Math.ceil(total / PAGE_SIZE);
-
-  const fetchRegistrations = async () => {
+  const fetchRegistrations = useCallback(async () => {
     setLoading(true);
     try {
-      const params: Record<string, any> = { page, limit: PAGE_SIZE };
+      const params: Record<string, any> = { page, limit: pageSize };
       if (statusFilter !== 'all') params.status = statusFilter;
       if (categoryFilter !== 'all') params.category = categoryFilter;
-      if (search) params.search = search;
+      if (search.trim()) params.search = search.trim();
 
       const response = await adminApi.getRegistrations(params);
       setRegistrations(response.data);
@@ -81,6 +70,15 @@ const Registrations = () => {
     } finally {
       setLoading(false);
     }
+  }, [page, pageSize, statusFilter, categoryFilter, search]);
+
+  useEffect(() => {
+    fetchRegistrations();
+  }, [fetchRegistrations]);
+
+  const handleSearchSubmit = () => {
+    setPage(1);
+    fetchRegistrations();
   };
 
   const handleFilterChange = (setter: (v: string) => void) => (v: string) => {
@@ -88,98 +86,106 @@ const Registrations = () => {
     setPage(1);
   };
 
+  const handlePageSizeChange = (value: string) => {
+    setPageSize(Number(value));
+    setPage(1);
+  };
+
   const handleResendEmail = async (registrationId: string, email: string) => {
-    if (!confirm(`Resend confirmation email to ${email}?`)) {
-      return;
-    }
-    
+    if (!confirm(`Resend confirmation email to ${email}?`)) return;
     try {
-      setLoading(true);
       await adminApi.resendEmail(registrationId);
-      alert('✅ Confirmation email resent successfully!');
+      alert('Confirmation email resent!');
     } catch (error: any) {
-      console.error('Failed to resend email:', error);
-      alert(`❌ Failed to resend email: ${error.response?.data?.message || error.message}`);
-    } finally {
-      setLoading(false);
+      alert(`Failed: ${error.message}`);
     }
   };
 
-  const handleRequery = async (reference: string, registrationId: string) => {
+  const handleRequery = async (registrationId: string) => {
     try {
-      setLoading(true);
       const response = await adminApi.requeryPayment(registrationId);
-      
       if (response.data.status === 'success') {
-        // Show success message
-        alert(`✅ ${response.data.message}`);
-        // Refresh the list
+        alert(`${response.data.message}`);
         await fetchRegistrations();
       } else {
-        alert(`❌ ${response.data.message}`);
+        alert(`${response.data.message}`);
       }
     } catch (error: any) {
-      console.error('Failed to requery payment:', error);
-      alert(`❌ Failed to requery payment: ${error.response?.data?.message || error.message}`);
-    } finally {
-      setLoading(false);
+      alert(`Failed: ${error.message}`);
     }
   };
 
   const exportToCSV = () => {
-    const headers = ['Name', 'Email', 'Phone', 'Chapter', 'State', 'Accommodation', 'Category', 'Amount', 'Status', 'Date'];
+    const headers = ['Name', 'Email', 'Phone', 'Chapter', 'State', 'Category', 'Amount', 'Status', 'Date'];
     const rows = registrations.map((reg) => [
       `${reg.firstName} ${reg.surname}`,
       reg.email,
       reg.phone || '-',
       reg.chapter || '-',
       reg.state || '-',
-      formatAccommodation(reg.accommodationType || '-'),
       formatAdminCategory(reg.category),
       formatAdminCurrency(reg.totalAmount),
       reg.paymentStatus,
       formatAdminDate(reg.createdAt),
     ]);
-
     const csv = [headers, ...rows].map((row) => row.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `registrations-${new Date().toISOString()}.csv`;
+    a.download = `registrations-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
+    window.URL.revokeObjectURL(url);
   };
 
+  const startRow = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const endRow = Math.min(page * pageSize, total);
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Registrations</h1>
-          <p className="text-gray-600 mt-2">Manage conference registrations</p>
+          <h1 className="text-2xl font-bold text-slate-900">Registrations</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            {loading ? 'Loading...' : `${formatAdminNumber(total)} total registrations`}
+          </p>
         </div>
-        <Button onClick={exportToCSV} variant="outline">
-          <Download className="w-4 h-4 mr-2" />
-          Export CSV
-        </Button>
+        <div className="flex items-center gap-2">
+          <Select value={String(pageSize)} onValueChange={handlePageSizeChange}>
+            <SelectTrigger className="w-[100px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PAGE_SIZES.map((size) => (
+                <SelectItem key={size} value={String(size)}>
+                  {size} / page
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button onClick={exportToCSV} variant="outline" size="sm">
+            <Download className="w-4 h-4 mr-1.5" />
+            Export
+          </Button>
+        </div>
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+      <Card className="border-slate-200">
+        <CardContent className="pt-5 pb-4">
+          <div className="flex flex-col md:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
-                placeholder="Search by name or email..."
+                placeholder="Search name, email, phone..."
                 value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') { setPage(1); fetchRegistrations(); } }}
-                className="pl-10"
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleSearchSubmit(); }}
+                className="pl-9"
               />
             </div>
             <Select value={statusFilter} onValueChange={handleFilterChange(setStatusFilter)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Payment Status" />
+              <SelectTrigger className="w-full md:w-[160px]">
+                <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
@@ -189,7 +195,7 @@ const Registrations = () => {
               </SelectContent>
             </Select>
             <Select value={categoryFilter} onValueChange={handleFilterChange(setCategoryFilter)}>
-              <SelectTrigger>
+              <SelectTrigger className="w-full md:w-[180px]">
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
               <SelectContent>
@@ -198,109 +204,81 @@ const Registrations = () => {
                 <SelectItem value="junior-doctor">Junior Doctor</SelectItem>
                 <SelectItem value="senior-doctor">Senior Doctor</SelectItem>
                 <SelectItem value="doctor-with-spouse">Doctor with Spouse</SelectItem>
-                <SelectItem value="doctor">Doctor (Legacy)</SelectItem>
               </SelectContent>
             </Select>
-            <Button onClick={() => { setPage(1); fetchRegistrations(); }} className="w-full">
-              <Search className="w-4 h-4 mr-2" />
-              Search
-            </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Registrations Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {formatAdminNumber(total)} Registration{total !== 1 ? 's' : ''}
-            {total > PAGE_SIZE && (
-              <span className="text-sm font-normal text-gray-500 ml-2">
-                (Page {page} of {totalPages})
-              </span>
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="flex justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
-            </div>
-          ) : registrations.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              No registrations found
-            </div>
-          ) : (
+      <div className="border border-slate-200 rounded-xl bg-white overflow-hidden">
+        {loading ? (
+          <div className="flex justify-center py-16">
+            <div className="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-slate-700" />
+          </div>
+        ) : registrations.length === 0 ? (
+          <div className="text-center py-16 text-slate-500">No registrations found</div>
+        ) : (
+          <>
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Name</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Email</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Category</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Amount</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Status</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Split</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Date</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Actions</th>
+                  <tr className="bg-slate-50 border-b border-slate-200">
+                    <th className="text-left py-2.5 px-4 font-semibold text-slate-600 w-12">#</th>
+                    <th className="text-left py-2.5 px-4 font-semibold text-slate-600">Name</th>
+                    <th className="text-left py-2.5 px-4 font-semibold text-slate-600">Email</th>
+                    <th className="text-left py-2.5 px-4 font-semibold text-slate-600">Category</th>
+                    <th className="text-right py-2.5 px-4 font-semibold text-slate-600">Amount</th>
+                    <th className="text-center py-2.5 px-4 font-semibold text-slate-600">Status</th>
+                    <th className="text-left py-2.5 px-4 font-semibold text-slate-600">Date</th>
+                    <th className="text-right py-2.5 px-4 font-semibold text-slate-600">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {registrations.map((reg) => (
-                    <tr key={reg.id} className="border-b hover:bg-gray-50">
-                      <td className="py-3 px-4">
+                  {registrations.map((reg, idx) => (
+                    <tr key={reg.id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                      <td className="py-2.5 px-4 text-slate-400 text-xs">{startRow + idx}</td>
+                      <td className="py-2.5 px-4 font-medium text-slate-900 whitespace-nowrap">
                         {reg.firstName} {reg.surname}
                       </td>
-                      <td className="py-3 px-4 text-sm text-gray-600">{reg.email}</td>
-                      <td className="py-3 px-4 text-sm">{formatAdminCategory(reg.category)}</td>
-                      <td className="py-3 px-4 font-medium">
+                      <td className="py-2.5 px-4 text-slate-600 max-w-[220px] truncate" title={reg.email}>
+                        {reg.email}
+                      </td>
+                      <td className="py-2.5 px-4">
+                        <Badge variant="outline" className="text-xs font-normal">
+                          {formatAdminCategory(reg.category)}
+                        </Badge>
+                      </td>
+                      <td className="py-2.5 px-4 text-right font-medium text-slate-900">
                         {formatAdminCurrency(reg.totalAmount)}
                       </td>
-                      <td className="py-3 px-4">
+                      <td className="py-2.5 px-4 text-center">
                         <PaymentStatusBadge status={reg.paymentStatus} />
                       </td>
-                      <td className="py-3 px-4">
-                        {reg.splitCode ? (
-                          <Badge variant="outline" className="text-purple-600 border-purple-300">
-                            Split
-                          </Badge>
-                        ) : (
-                          <span className="text-gray-400 text-xs">-</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 text-sm text-gray-600">
+                      <td className="py-2.5 px-4 text-slate-500 whitespace-nowrap">
                         {formatAdminDate(reg.createdAt)}
                       </td>
-                      <td className="py-3 px-4">
-                        <div className="flex gap-2">
+                      <td className="py-2.5 px-4 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
                           {reg.paymentStatus === 'pending' && (
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => handleRequery(reg.paymentReference, reg.id)}
-                              disabled={loading}
-                              title="Verify payment status with Paystack"
+                              onClick={() => handleRequery(reg.id)}
+                              className="h-7 text-xs"
                             >
-                              <RefreshCw className={`w-3 h-3 mr-1 ${loading ? 'animate-spin' : ''}`} />
+                              <RefreshCw className="w-3 h-3 mr-1" />
                               Requery
                             </Button>
                           )}
                           {reg.paymentStatus === 'paid' && (
-                            <>
-                              <span className="text-green-600 text-sm flex items-center">
-                                ✓ Verified
-                              </span>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handleResendEmail(reg.id, reg.email)}
-                                disabled={loading}
-                                title="Resend confirmation email"
-                                className="text-blue-600 hover:text-blue-700"
-                              >
-                                Resend Email
-                              </Button>
-                            </>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleResendEmail(reg.id, reg.email)}
+                              className="h-7 text-xs text-blue-600 hover:text-blue-700"
+                            >
+                              Resend
+                            </Button>
                           )}
                         </div>
                       </td>
@@ -311,51 +289,56 @@ const Registrations = () => {
             </div>
 
             {totalPages > 1 && (
-              <div className="mt-4 flex justify-center">
-                <Pagination>
-                  <PaginationContent>
-                    <PaginationItem>
-                      <PaginationPrevious
-                        onClick={() => setPage(p => Math.max(1, p - 1))}
-                        className={page <= 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                      />
-                    </PaginationItem>
-                    {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
-                      let pageNum: number;
-                      if (totalPages <= 7) {
-                        pageNum = i + 1;
-                      } else if (page <= 4) {
-                        pageNum = i + 1;
-                      } else if (page >= totalPages - 3) {
-                        pageNum = totalPages - 6 + i;
-                      } else {
-                        pageNum = page - 3 + i;
-                      }
-                      return (
-                        <PaginationItem key={pageNum}>
-                          <PaginationLink
-                            onClick={() => setPage(pageNum)}
-                            isActive={page === pageNum}
-                            className="cursor-pointer"
-                          >
-                            {pageNum}
-                          </PaginationLink>
-                        </PaginationItem>
-                      );
-                    })}
-                    <PaginationItem>
-                      <PaginationNext
-                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                        className={page >= totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                      />
-                    </PaginationItem>
-                  </PaginationContent>
-                </Pagination>
+              <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200 bg-slate-50/50">
+                <p className="text-xs text-slate-500">
+                  Showing {formatAdminNumber(startRow)}-{formatAdminNumber(endRow)} of {formatAdminNumber(total)}
+                </p>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    disabled={page <= 1}
+                    onClick={() => setPage(1)}
+                  >
+                    <ChevronsLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    disabled={page <= 1}
+                    onClick={() => setPage(p => p - 1)}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="px-3 text-sm font-medium text-slate-700">
+                    {page} / {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    disabled={page >= totalPages}
+                    onClick={() => setPage(p => p + 1)}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    disabled={page >= totalPages}
+                    onClick={() => setPage(totalPages)}
+                  >
+                    <ChevronsRight className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             )}
-          )}
-        </CardContent>
-      </Card>
+          </>
+        )}
+      </div>
     </div>
   );
 };
