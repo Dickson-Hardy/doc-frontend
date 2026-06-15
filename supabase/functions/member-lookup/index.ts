@@ -19,12 +19,12 @@ Deno.serve(async (req) => {
     await client.connect();
 
     const db = client.db("live");
-    const members = db.collection("members");
-    const member = await members.findOne({ email });
+    const users = db.collection("users");
+    const user = await users.findOne({ email });
 
     await client.close();
 
-    if (!member) {
+    if (!user) {
       return new Response(
         JSON.stringify({ member: null }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -34,27 +34,27 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         member: {
-          id: member._id?.toString(),
-          email: member.email,
-          surname: member.surname,
-          firstName: member.firstName,
-          otherNames: member.otherNames || "",
-          age: member.age,
-          sex: member.sex,
-          phone: member.phone,
-          chapter: member.chapter,
-          state: member.state || member.chapter,
-          isCmdaMember: member.isCmdaMember,
-          currentLeadershipPost: member.currentLeadershipPost || "",
-          previousLeadershipPost: member.previousLeadershipPost || "",
-          category: member.category,
-          chapterOfGraduation: member.chapterOfGraduation || member.chapter,
-          yearsInPractice: member.yearsInPractice,
+          id: user._id?.toString(),
+          email: user.email,
+          surname: user.lastName || user.surname || "",
+          firstName: user.firstName || "",
+          otherNames: user.middleName || "",
+          age: user.age || null,
+          sex: user.gender || "",
+          phone: user.phone || "",
+          chapter: user.region || user.chapter || "",
+          state: user.region || user.state || "",
+          isCmdaMember: user.subscribed || false,
+          currentLeadershipPost: user.currentLeadershipPost || "",
+          previousLeadershipPost: user.previousLeadershipPost || "",
+          category: user.category || "",
+          chapterOfGraduation: user.chapterOfGraduation || user.region || "",
+          yearsInPractice: user.yearsInPractice || null,
           _metadata: {
-            membershipId: member.membershipId,
-            role: member.role,
-            licenseNumber: member.licenseNumber,
-            specialty: member.specialty,
+            membershipId: user.membershipId || "",
+            role: user.role || "",
+            licenseNumber: user.licenseNumber || "",
+            specialty: user.specialty || "",
           },
         },
       }),
