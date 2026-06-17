@@ -17,7 +17,7 @@ const DEADLINE = new Date("2026-06-30T23:59:59+01:00");
 function calculateAmount(category: string): { baseFee: number; lateFee: number; total: number } {
   const baseFee = CATEGORY_FEES[category] || 0;
   const isLate = new Date() > DEADLINE;
-  const lateFee = isLate ? Math.round(baseFee * 0.25) : 0;
+  const lateFee = isLate ? 10000 : 0;
   return { baseFee, lateFee, total: baseFee + lateFee };
 }
 

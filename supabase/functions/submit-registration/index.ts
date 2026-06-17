@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
 
     const now = new Date();
     const deadline = new Date("2026-06-30");
-    const lateFee = now > deadline ? Math.round(baseFee * 0.25) : 0;
+    const lateFee = now > deadline ? 10000 : 0;
 
     const { data: settings } = await supabase
       .from("app_settings")
