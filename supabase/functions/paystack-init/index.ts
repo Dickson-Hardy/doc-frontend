@@ -14,10 +14,10 @@ const CATEGORY_FEES: Record<string, number> = {
 
 const DEADLINE = new Date("2026-06-30T23:59:59+01:00");
 
-function calculateAmount(category: string): { baseFee: number; lateFee: number; total: number } {
-  const baseFee = CATEGORY_FEES[category] || 0;
+function calculateAmount(storedBaseFee: number, storedLateFee: number): { baseFee: number; lateFee: number; total: number } {
+  const baseFee = storedBaseFee || 0;
   const isLate = new Date() > DEADLINE;
-  const lateFee = isLate ? 10000 : 0;
+  const lateFee = isLate && !storedLateFee ? 10000 : (storedLateFee || 0);
   return { baseFee, lateFee, total: baseFee + lateFee };
 }
 
@@ -48,8 +48,8 @@ Deno.serve(async (req) => {
       throw new Error("Registration not found for this payment reference");
     }
 
-    // Recalculate amount based on current date (late fee applies if paying after deadline)
-    const { baseFee, lateFee, total } = calculateAmount(reg.category);
+    // Use stored baseFee, only add late fee if not already applied
+    const { baseFee, lateFee, total } = calculateAmount(reg.baseFee, reg.lateFee);
 
     // Update registration if amounts changed
     if (total !== reg.totalAmount || baseFee !== reg.baseFee || lateFee !== reg.lateFee) {

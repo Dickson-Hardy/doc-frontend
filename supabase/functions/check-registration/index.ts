@@ -43,9 +43,10 @@ Deno.serve(async (req) => {
     }
 
     // Late fee based on CURRENT date — flat ₦10,000 if paying after deadline
-    const baseFee = CATEGORY_FEES[data.category] || 0;
+    // Use the stored baseFee, only add late fee if not already applied
+    const baseFee = data.baseFee || CATEGORY_FEES[data.category] || 0;
     const isLate = new Date() > DEADLINE;
-    const lateFee = isLate ? 10000 : 0;
+    const lateFee = isLate && !data.lateFee ? 10000 : (data.lateFee || 0);
     const correctTotal = baseFee + lateFee;
 
     // Update if amounts are stale
