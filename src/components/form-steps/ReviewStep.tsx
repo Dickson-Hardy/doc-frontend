@@ -3,7 +3,7 @@ import { RegistrationFormData } from '@/types/registration';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { CheckCircle2, User, Building2, Calendar, Hotel, FileText, Users } from 'lucide-react';
+import { CheckCircle2, User, Building2, Calendar, FileText, Users } from 'lucide-react';
 
 interface ReviewStepProps {
   form: UseFormReturn<RegistrationFormData>;
@@ -32,37 +32,6 @@ const formData = form.getValues();
       'doctor-with-spouse': 'Doctor with Spouse',
     };
     return labels[category] || category;
-  };
-
-  const getAccommodationLabel = () => {
-    switch (formData.accommodationType) {
-      case 'covenant-guest-house':
-        return `Covenant Guest House - ${formData.covenantRoomType?.replace('-', ' ').toUpperCase()}`;
-      case 'pg-hostel':
-        return 'PG Hostel - Standard Room';
-      case 'camp-a':
-        return 'Camp A - Standard Bed';
-      case 'temperance':
-        return `Temperance (Bells University) - ${formData.temperanceRoomType?.replace('-', ' ').toUpperCase()}`;
-      case 'student-free':
-        return 'Student Accommodation (Free)';
-      case 'no-accommodation':
-        return 'No Accommodation Needed (Own Arrangement)';
-      default:
-        return 'Not selected';
-    }
-  };
-
-  const getRoomSharingLabel = () => {
-    if (formData.accommodationType === 'student-free' || formData.accommodationType === 'no-accommodation') return 'N/A';
-    if (formData.accommodationType === 'camp-a') {
-      return formData.roommateName ? `Pairing with: ${formData.roommateName}` : 'Auto-pairing';
-    }
-    if (formData.roomSharing === 'shared') {
-      return formData.roommateName ? `Shared - Pairing with: ${formData.roommateName}` : 'Shared - Auto-pairing';
-    }
-    if (formData.roomSharing === 'private') return 'Private Room';
-    return 'Not specified';
   };
 
   return (
@@ -190,28 +159,6 @@ const formData = form.getValues();
             <p className="text-sm text-muted-foreground">Date of Arrival</p>
             <p className="font-medium">{formatDate(formData.dateOfArrival)}</p>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Accommodation */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Hotel className="w-5 h-5" />
-            Accommodation
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div>
-            <p className="text-sm text-muted-foreground">Accommodation Type</p>
-            <p className="font-medium">{getAccommodationLabel()}</p>
-          </div>
-          {formData.accommodationType && formData.accommodationType !== 'student-free' && (
-            <div>
-              <p className="text-sm text-muted-foreground">Room Arrangement</p>
-              <p className="font-medium">{getRoomSharingLabel()}</p>
-            </div>
-          )}
         </CardContent>
       </Card>
 

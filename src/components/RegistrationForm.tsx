@@ -16,7 +16,6 @@ import {
   CategoryStep,
   SpouseDetailsStep,
   LogisticsStep,
-  AccommodationStep,
   AbstractStep,
   ReviewStep,
 } from '@/components/form-steps';
@@ -29,10 +28,9 @@ const steps = [
   { id: 1, title: 'Personal Info', description: 'Basic details' },
   { id: 2, title: 'CMDA Info', description: 'Membership' },
   { id: 3, title: 'Category', description: 'Registration type' },
-  { id: 4, title: 'Logistics', description: 'Arrival & stay' },
-  { id: 5, title: 'Accommodation', description: 'Room selection' },
-  { id: 6, title: 'Abstracts', description: 'Presentations' },
-  { id: 7, title: 'Review', description: 'Confirm details' },
+  { id: 4, title: 'Logistics', description: 'Arrival date' },
+  { id: 5, title: 'Abstracts', description: 'Presentations' },
+  { id: 6, title: 'Review', description: 'Confirm details' },
 ];
 
 // Zod schema for form validation
@@ -184,46 +182,6 @@ const RegistrationForm = () => {
         fieldsToValidate = ['dateOfArrival'];
         break;
       case 5:
-        // Accommodation step - validate based on selection
-        const accommodationType = watch('accommodationType');
-        if (!accommodationType) {
-          toast({
-            title: 'Selection Required',
-            description: 'Please select an accommodation option.',
-            variant: 'destructive',
-          });
-          return false;
-        }
-        
-        // Validate room type for covenant and temperance
-        if (accommodationType === 'covenant-guest-house' && !watch('covenantRoomType')) {
-          toast({
-            title: 'Room Type Required',
-            description: 'Please select a room type for Covenant Guest House.',
-            variant: 'destructive',
-          });
-          return false;
-        }
-        if (accommodationType === 'temperance' && !watch('temperanceRoomType')) {
-          toast({
-            title: 'Room Type Required',
-            description: 'Please select a room type for Temperance.',
-            variant: 'destructive',
-          });
-          return false;
-        }
-        
-        // Validate room sharing for non-student, non-camp-a, and non-no-accommodation options
-        if (accommodationType !== 'student-free' && accommodationType !== 'camp-a' && accommodationType !== 'no-accommodation' && !watch('roomSharing')) {
-          toast({
-            title: 'Room Sharing Required',
-            description: 'Please indicate if you want to share a room.',
-            variant: 'destructive',
-          });
-          return false;
-        }
-        return true;
-      case 6:
         // For abstract step, hasAbstract must be explicitly set (true or false)
         // No other validation needed - both yes and no are valid
         const hasAbstractValue = watch('hasAbstract');
@@ -370,10 +328,8 @@ const RegistrationForm = () => {
       case 4:
         return <LogisticsStep form={form} />;
       case 5:
-        return <AccommodationStep form={form} />;
-      case 6:
         return <AbstractStep form={form} />;
-      case 7:
+      case 6:
         return <ReviewStep form={form} totalAmount={priceBreakdown?.total || 0} />;
       default:
         return null;

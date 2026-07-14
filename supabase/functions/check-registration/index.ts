@@ -6,13 +6,13 @@ const corsHeaders = {
 };
 
 const CATEGORY_FEES: Record<string, number> = {
-  "student": 15000,
-  "junior-doctor": 35000,
+  "student": 11000,
+  "junior-doctor": 30000,
   "senior-doctor": 50000,
-  "doctor-with-spouse": 80000,
+  "doctor-with-spouse": 85000,
 };
 
-const DEADLINE = new Date("2026-06-30T23:59:59+01:00");
+const DEADLINE = new Date("2026-05-18T23:59:59+01:00");
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {

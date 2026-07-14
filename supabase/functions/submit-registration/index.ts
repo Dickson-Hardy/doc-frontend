@@ -37,14 +37,14 @@ Deno.serve(async (req) => {
 
     let baseFee = 0;
     switch (category) {
-      case "student": baseFee = 15000; break;
-      case "junior-doctor": baseFee = 35000; break;
+      case "student": baseFee = 11000; break;
+      case "junior-doctor": baseFee = 30000; break;
       case "senior-doctor": baseFee = 50000; break;
-      case "doctor-with-spouse": baseFee = 80000; break;
+      case "doctor-with-spouse": baseFee = 85000; break;
     }
 
     const now = new Date();
-    const deadline = new Date("2026-06-30");
+    const deadline = new Date("2026-05-18T23:59:59+01:00");
     const lateFee = now > deadline ? 10000 : 0;
 
     const { data: settings } = await supabase
