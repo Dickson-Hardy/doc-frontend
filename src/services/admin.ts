@@ -263,6 +263,22 @@ export const adminApi = {
     return data;
   },
 
+  confirmPaymentManually: async (registrationId: string, amount: number) => {
+    const { data, error } = await supabase
+      .from('registrations')
+      .update({
+        paymentStatus: 'paid',
+        totalAmount: amount,
+        paidAt: new Date().toISOString(),
+      })
+      .eq('id', registrationId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
   getRegistration: async (id: string) => {
     const { data, error } = await supabase
       .from('registrations')

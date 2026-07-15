@@ -115,6 +115,16 @@ const Registrations = () => {
     }
   };
 
+  const handleConfirmPayment = async (registrationId: string, amount: number) => {
+    try {
+      await adminApi.confirmPaymentManually(registrationId, amount);
+      toast({ title: 'Confirmed', description: 'Payment marked as paid' });
+      await fetchRegistrations();
+    } catch (error: any) {
+      toast({ title: 'Failed', description: error.message, variant: 'destructive' });
+    }
+  };
+
   const exportToCSV = async () => {
     try {
       const params: Record<string, any> = { page: 1, limit: total };
@@ -272,15 +282,25 @@ const Registrations = () => {
                       <td className="py-2.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           {reg.paymentStatus === 'pending' && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleRequery(reg.id)}
-                              className="h-7 text-xs"
-                            >
-                              <RefreshCw className="w-3 h-3 mr-1" />
-                              Requery
-                            </Button>
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleConfirmPayment(reg.id, reg.totalAmount)}
+                                className="h-7 text-xs text-green-600 hover:text-green-700 border-green-300"
+                              >
+                                Confirm
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleRequery(reg.id)}
+                                className="h-7 text-xs"
+                              >
+                                <RefreshCw className="w-3 h-3 mr-1" />
+                                Requery
+                              </Button>
+                            </>
                           )}
                           {reg.paymentStatus === 'paid' && (
                             <Button
