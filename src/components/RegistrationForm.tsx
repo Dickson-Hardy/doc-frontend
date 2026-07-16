@@ -42,7 +42,7 @@ const registrationSchema = z.object({
   age: z.coerce.number().min(18, 'Must be at least 18 years old').max(100, 'Please enter a valid age'),
   sex: z.enum(['male', 'female'], { required_error: 'Please select your sex' }),
   phone: z.string().min(1, 'Phone number is required'),
-  chapter: z.string().min(1, 'Chapter is required'),
+  chapter: z.string().optional(),
   state: z.string().optional(),
   currentLeadershipPost: z.string().optional(),
   previousLeadershipPost: z.string().optional(),
@@ -52,17 +52,44 @@ const registrationSchema = z.object({
   spouseFirstName: z.string().optional(),
   spouseOtherNames: z.string().optional(),
   spouseEmail: z.string().email().optional().or(z.literal('')),
-  dateOfArrival: z.date({ required_error: 'Please select your arrival date' }),
+  dateOfArrival: z.date().optional(),
   accommodationType: z.enum(['covenant-guest-house', 'pg-hostel', 'camp-a', 'temperance', 'student-free', 'no-accommodation']).optional(),
   covenantRoomType: z.enum(['standard', 'elite', 'mini-suite']).optional(),
   temperanceRoomType: z.enum(['executive-chalet', 'sapphire']).optional(),
   roomSharing: z.enum(['shared', 'private']).optional(),
   roommateName: z.string().optional(),
-  hasAbstract: z.boolean(),
+  hasAbstract: z.boolean().optional(),
   presentationTitle: z.string().optional(),
   abstractFileUrl: z.string().optional(),
   abstractFile: z.any().optional(),
 }).superRefine((data, ctx) => {
+  // Chapter required for in-person
+  if (!data.category?.startsWith('virtual-') && !data.chapter) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Chapter is required',
+      path: ['chapter'],
+    });
+  }
+
+  // Arrival date required for in-person
+  if (!data.category?.startsWith('virtual-') && !data.dateOfArrival) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Arrival date is required',
+      path: ['dateOfArrival'],
+    });
+  }
+
+  // hasAbstract required for in-person
+  if (!data.category?.startsWith('virtual-') && (data.hasAbstract === undefined || data.hasAbstract === null)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Please select whether you have an abstract',
+      path: ['hasAbstract'],
+    });
+  }
+
   // If doctor-with-spouse, spouse details are required
   if (data.category === 'doctor-with-spouse') {
     if (!data.spouseSurname || !data.spouseFirstName || !data.spouseEmail) {
@@ -132,8 +159,15 @@ const RegistrationForm = () => {
   // Determine if we need to show spouse details step (only for in-person doctor-with-spouse)
   const showSpouseStep = category === 'doctor-with-spouse';
   
+  // Check if current category is virtual
+  const isVirtual = category?.startsWith('virtual-');
+
   // Dynamically adjust steps based on category
   const activeSteps = useMemo(() => {
+    // Virtual participants: streamlined flow — Email → Personal → Category → Review
+    if (isVirtual) {
+      return steps.filter(step => [0, 1, 3, 6].includes(step.id));
+    }
     if (!showSpouseStep) {
       return steps.filter(step => step.id !== 3.5);
     }
@@ -148,7 +182,7 @@ const RegistrationForm = () => {
       });
     }
     return stepsWithSpouse;
-  }, [showSpouseStep]);
+  }, [showSpouseStep, isVirtual]);
 
   const handleMemberFound = () => {
     setMemberFound(true);
