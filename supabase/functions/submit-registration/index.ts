@@ -41,6 +41,9 @@ Deno.serve(async (req) => {
       case "junior-doctor": baseFee = 30000; break;
       case "senior-doctor": baseFee = 50000; break;
       case "doctor-with-spouse": baseFee = 85000; break;
+      case "virtual-student": baseFee = 11000; break;
+      case "virtual-junior-doctor": baseFee = 30000; break;
+      case "virtual-senior-doctor": baseFee = 50000; break;
     }
 
     const now = new Date();

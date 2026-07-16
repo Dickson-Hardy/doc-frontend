@@ -53,7 +53,12 @@ Deno.serve(async (req) => {
       'junior-doctor': 'Junior Doctor',
       'senior-doctor': 'Senior Doctor',
       'doctor-with-spouse': 'Doctor with Spouse',
+      'virtual-student': 'Virtual - Student',
+      'virtual-junior-doctor': 'Virtual - Junior Doctor',
+      'virtual-senior-doctor': 'Virtual - Senior Doctor',
     };
+
+    const isVirtual = reg.category?.startsWith('virtual-');
 
     const htmlContent = `
 <!DOCTYPE html>
@@ -101,6 +106,22 @@ Deno.serve(async (req) => {
         </div>
       </div>
 
+      ${isVirtual ? `
+      <div class="qr-section" style="background: #e8f5e9; border: 2px solid #4caf50;">
+        <h3 style="color: #2e7d32;">🖥️ Virtual Participation</h3>
+        <p>You will receive a meeting link via email before the conference begins.</p>
+        <p style="margin-top: 15px; color: #666;">Please keep this email for your records.</p>
+      </div>
+
+      <div class="important">
+        <strong>⚠️ Important:</strong>
+        <ul>
+          <li>A meeting link will be sent to you before the event</li>
+          <li>Ensure your email address is correct</li>
+          <li>Keep your registration ID for reference</li>
+        </ul>
+      </div>
+      ` : `
       <div class="qr-section">
         <h3>Your Conference Pass</h3>
         <p>Please present this QR code at the conference venue for check-in:</p>
@@ -115,8 +136,9 @@ Deno.serve(async (req) => {
           <li>Keep your registration ID for reference</li>
         </ul>
       </div>
+      `}
 
-      <p>We look forward to seeing you at the conference!</p>
+      <p>We look forward to ${isVirtual ? 'welcoming you online' : 'seeing you at the conference'}!</p>
       <p>For any inquiries, please contact us at <a href="mailto:conference@cmdanigeria.org">conference@cmdanigeria.org</a></p>
     </div>
     <div class="footer">
@@ -134,8 +156,10 @@ Deno.serve(async (req) => {
       `Category: ${categoryLabels[reg.category] || reg.category}\n` +
       `Amount Paid: ₦${reg.totalAmount?.toLocaleString()}\n` +
       `Payment Reference: ${reg.paymentReference}\n\n` +
-      `Your QR code: ${qrCodeUrl}\n` +
-      `Please present it at check-in.\n`;
+      (isVirtual ?
+        `You are registered for virtual participation.\nA meeting link will be sent to you before the event.\n` :
+        `Your QR code: ${qrCodeUrl}\nPlease present it at check-in.\n`
+      );
 
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",

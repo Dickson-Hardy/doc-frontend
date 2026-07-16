@@ -46,7 +46,7 @@ const registrationSchema = z.object({
   state: z.string().optional(),
   currentLeadershipPost: z.string().optional(),
   previousLeadershipPost: z.string().optional(),
-  category: z.enum(['student', 'junior-doctor', 'senior-doctor', 'doctor-with-spouse'], { required_error: 'Please select a category' }),
+  category: z.enum(['student', 'junior-doctor', 'senior-doctor', 'doctor-with-spouse', 'virtual-student', 'virtual-junior-doctor', 'virtual-senior-doctor'], { required_error: 'Please select a category' }),
   chapterOfGraduation: z.string().optional(),
   spouseSurname: z.string().optional(),
   spouseFirstName: z.string().optional(),
@@ -129,7 +129,7 @@ const RegistrationForm = () => {
     return calculatePrice(category);
   }, [category]);
 
-  // Determine if we need to show spouse details step
+  // Determine if we need to show spouse details step (only for in-person doctor-with-spouse)
   const showSpouseStep = category === 'doctor-with-spouse';
   
   // Dynamically adjust steps based on category

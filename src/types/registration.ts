@@ -1,4 +1,4 @@
-export type Category = 'student' | 'junior-doctor' | 'senior-doctor' | 'doctor-with-spouse';
+export type Category = 'student' | 'junior-doctor' | 'senior-doctor' | 'doctor-with-spouse' | 'virtual-student' | 'virtual-junior-doctor' | 'virtual-senior-doctor';
 
 export type AccommodationType = 
   | 'covenant-guest-house' 
@@ -95,6 +95,9 @@ export const BASE_FEES: Record<string, number> = {
   'junior-doctor': 30000,
   'senior-doctor': 50000,
   'doctor-with-spouse': 85000,
+  'virtual-student': 11000,
+  'virtual-junior-doctor': 30000,
+  'virtual-senior-doctor': 50000,
 };
 
 export interface PaystackConfig {

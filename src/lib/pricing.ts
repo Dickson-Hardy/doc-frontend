@@ -31,6 +31,18 @@ export function calculatePrice(
       baseFee = BASE_FEES['doctor-with-spouse'];
       categoryLabel = 'Doctor with Spouse Package';
       break;
+    case 'virtual-student':
+      baseFee = BASE_FEES['virtual-student'];
+      categoryLabel = 'Virtual - Student';
+      break;
+    case 'virtual-junior-doctor':
+      baseFee = BASE_FEES['virtual-junior-doctor'];
+      categoryLabel = 'Virtual - Junior Doctor';
+      break;
+    case 'virtual-senior-doctor':
+      baseFee = BASE_FEES['virtual-senior-doctor'];
+      categoryLabel = 'Virtual - Senior Doctor';
+      break;
   }
 
   const lateFee = isLateRegistration ? LATE_FEE : 0;

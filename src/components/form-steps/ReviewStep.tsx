@@ -26,10 +26,13 @@ const formData = form.getValues();
 
   const getCategoryLabel = (category: string) => {
     const labels: Record<string, string> = {
-      'student': 'Student',
-      'junior-doctor': 'Junior Doctor',
-      'senior-doctor': 'Senior Doctor',
-      'doctor-with-spouse': 'Doctor with Spouse',
+      'student': 'Student (In-Person)',
+      'junior-doctor': 'Junior Doctor (In-Person)',
+      'senior-doctor': 'Senior Doctor (In-Person)',
+      'doctor-with-spouse': 'Doctor with Spouse (In-Person)',
+      'virtual-student': 'Virtual - Student',
+      'virtual-junior-doctor': 'Virtual - Junior Doctor',
+      'virtual-senior-doctor': 'Virtual - Senior Doctor',
     };
     return labels[category] || category;
   };
