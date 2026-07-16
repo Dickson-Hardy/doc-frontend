@@ -49,7 +49,8 @@ Deno.serve(async (req) => {
     // Use the stored baseFee, only add late fee if not already applied
     const baseFee = data.baseFee || CATEGORY_FEES[data.category] || 0;
     const isLate = new Date() > DEADLINE;
-    const lateFee = isLate && !data.lateFee ? 10000 : (data.lateFee || 0);
+    const isVirtual = data.category?.startsWith('virtual-');
+    const lateFee = (isLate && !isVirtual && !data.lateFee) ? 10000 : (isVirtual ? 0 : (data.lateFee || 0));
     const correctTotal = baseFee + lateFee;
 
     // Update if amounts are stale

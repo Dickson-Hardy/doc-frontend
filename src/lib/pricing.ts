@@ -45,7 +45,8 @@ export function calculatePrice(
       break;
   }
 
-  const lateFee = isLateRegistration ? LATE_FEE : 0;
+  const isVirtual = category.startsWith('virtual-');
+  const lateFee = (isLateRegistration && !isVirtual) ? LATE_FEE : 0;
   const total = baseFee + lateFee;
 
   return {
