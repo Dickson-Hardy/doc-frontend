@@ -42,7 +42,7 @@ const registrationSchema = z.object({
   age: z.coerce.number().min(18, 'Must be at least 18 years old').max(100, 'Please enter a valid age'),
   sex: z.enum(['male', 'female'], { required_error: 'Please select your sex' }),
   phone: z.string().min(1, 'Phone number is required'),
-  chapter: z.string().optional(),
+  chapter: z.string().min(1, 'Chapter is required'),
   state: z.string().optional(),
   currentLeadershipPost: z.string().optional(),
   previousLeadershipPost: z.string().optional(),
@@ -63,33 +63,6 @@ const registrationSchema = z.object({
   abstractFileUrl: z.string().optional(),
   abstractFile: z.any().optional(),
 }).superRefine((data, ctx) => {
-  // Chapter required for in-person
-  if (!data.category?.startsWith('virtual-') && !data.chapter) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'Chapter is required',
-      path: ['chapter'],
-    });
-  }
-
-  // Arrival date required for in-person
-  if (!data.category?.startsWith('virtual-') && !data.dateOfArrival) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'Arrival date is required',
-      path: ['dateOfArrival'],
-    });
-  }
-
-  // hasAbstract required for in-person
-  if (!data.category?.startsWith('virtual-') && (data.hasAbstract === undefined || data.hasAbstract === null)) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'Please select whether you have an abstract',
-      path: ['hasAbstract'],
-    });
-  }
-
   // If doctor-with-spouse, spouse details are required
   if (data.category === 'doctor-with-spouse') {
     if (!data.spouseSurname || !data.spouseFirstName || !data.spouseEmail) {
@@ -164,9 +137,9 @@ const RegistrationForm = () => {
 
   // Dynamically adjust steps based on category
   const activeSteps = useMemo(() => {
-    // Virtual participants: streamlined flow — Email → Personal → Category → Review
+    // Virtual participants: Email → Personal → CMDA → Category → Review
     if (isVirtual) {
-      return steps.filter(step => [0, 1, 3, 6].includes(step.id));
+      return steps.filter(step => [0, 1, 2, 3, 6].includes(step.id));
     }
     if (!showSpouseStep) {
       return steps.filter(step => step.id !== 3.5);
