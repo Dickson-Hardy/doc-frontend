@@ -22,7 +22,7 @@ const DeadlineNotice = () => {
           <div>
             <h4 className="font-semibold text-destructive">Late Registration Period</h4>
             <p className="text-sm text-destructive/80 mt-1">
-              The early registration deadline has passed. A late fee of {formatNaira(LATE_FEE)} will be applied to all registrations.
+              The early registration deadline has passed. A late fee of {formatNaira(LATE_FEE)} applies to in-person registrations only. Virtual registrations are exempt.
             </p>
           </div>
         </div>

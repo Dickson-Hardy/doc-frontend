@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { BASE_FEES, EARLY_REGISTRATION_DEADLINE, LATE_FEE } from '@/types/registration';
 
 export interface AdminUser {
   email: string;
@@ -174,19 +175,11 @@ export const adminApi = {
       .eq('paymentStatus', 'paid');
     if (error) throw error;
 
-    const categoryPrices: Record<string, number> = {
-      'student': 15000,
-      'junior-doctor': 35000,
-      'senior-doctor': 50000,
-      'doctor-with-spouse': 80000,
-    };
-
-    const deadline = new Date('2026-06-30');
-
     return (data || []).map((reg: any) => {
-      const baseFee = categoryPrices[reg.category] || 0;
+      const baseFee = BASE_FEES[reg.category] || 0;
       const createdAt = new Date(reg.createdAt);
-      const lateFee = createdAt > deadline ? Math.round(baseFee * 0.25) : 0;
+      const isVirtual = reg.category?.startsWith('virtual-');
+      const lateFee = createdAt > EARLY_REGISTRATION_DEADLINE && !isVirtual ? LATE_FEE : 0;
       const expectedPrice = baseFee + lateFee;
       const dbAmount = reg.totalAmount || 0;
       const discrepancies: string[] = [];

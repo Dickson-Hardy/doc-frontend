@@ -10,7 +10,8 @@ export function calculatePrice(
   category: Category,
   currentDate: Date = new Date()
 ): PriceBreakdown {
-  const isLateRegistration = currentDate > EARLY_REGISTRATION_DEADLINE;
+  const isVirtual = category.startsWith('virtual-');
+  const isLateRegistration = currentDate > EARLY_REGISTRATION_DEADLINE && !isVirtual;
   let baseFee = 0;
   let categoryLabel = '';
 
@@ -45,8 +46,7 @@ export function calculatePrice(
       break;
   }
 
-  const isVirtual = category.startsWith('virtual-');
-  const lateFee = (isLateRegistration && !isVirtual) ? LATE_FEE : 0;
+  const lateFee = isLateRegistration ? LATE_FEE : 0;
   const total = baseFee + lateFee;
 
   return {
