@@ -149,21 +149,23 @@ const formData = form.getValues();
         </Card>
       )}
 
-      {/* Logistics */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="w-5 h-5" />
-            Logistics
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div>
-            <p className="text-sm text-muted-foreground">Date of Arrival</p>
-            <p className="font-medium">{formatDate(formData.dateOfArrival)}</p>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Logistics (in-person only) */}
+      {formData.category && !formData.category.startsWith('virtual-') && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="w-5 h-5" />
+              Logistics
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div>
+              <p className="text-sm text-muted-foreground">Date of Arrival</p>
+              <p className="font-medium">{formatDate(formData.dateOfArrival)}</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Abstract Submission */}
       {formData.hasAbstract && (

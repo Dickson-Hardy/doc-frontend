@@ -48,7 +48,8 @@ Deno.serve(async (req) => {
 
     const now = new Date();
     const deadline = new Date("2026-05-18T23:59:59+01:00");
-    const lateFee = now > deadline ? 10000 : 0;
+    const isVirtual = category?.startsWith("virtual-");
+    const lateFee = (now > deadline && !isVirtual) ? 10000 : 0;
 
     const { data: settings } = await supabase
       .from("app_settings")
@@ -76,7 +77,7 @@ Deno.serve(async (req) => {
         spouseFirstName: body.spouseFirstName || null,
         spouseOtherNames: body.spouseOtherNames || null,
         spouseEmail: body.spouseEmail || null,
-        dateOfArrival: body.dateOfArrival,
+        dateOfArrival: body.dateOfArrival || null,
         accommodationType: body.accommodationType || null,
         covenantRoomType: body.covenantRoomType || null,
         temperanceRoomType: body.temperanceRoomType || null,
