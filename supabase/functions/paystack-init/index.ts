@@ -5,12 +5,13 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const DEADLINE = new Date("2026-06-30T23:59:59+01:00");
+const DEADLINE = new Date("2026-05-18T23:59:59+01:00");
 
-function calculateAmount(storedBaseFee: number, storedLateFee: number): { baseFee: number; lateFee: number; total: number } {
+function calculateAmount(storedBaseFee: number, storedLateFee: number, category: string): { baseFee: number; lateFee: number; total: number } {
   const baseFee = storedBaseFee || 0;
   const isLate = new Date() > DEADLINE;
-  const lateFee = isLate && !storedLateFee ? 10000 : (storedLateFee || 0);
+  const isVirtual = category?.startsWith('virtual-');
+  const lateFee = (isLate && !isVirtual && !storedLateFee) ? 10000 : (isVirtual ? 0 : (storedLateFee || 0));
   return { baseFee, lateFee, total: baseFee + lateFee };
 }
 
@@ -72,7 +73,7 @@ Deno.serve(async (req) => {
     }
 
     // Use stored baseFee, only add late fee if not already applied
-    const { baseFee, lateFee, total } = calculateAmount(registration.baseFee, registration.lateFee);
+    const { baseFee, lateFee, total } = calculateAmount(registration.baseFee, registration.lateFee, registration.category);
 
     // Update registration if amounts changed
     if (total !== registration.totalAmount || baseFee !== registration.baseFee || lateFee !== registration.lateFee) {

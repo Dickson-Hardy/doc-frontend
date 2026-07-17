@@ -178,7 +178,7 @@ const RegistrationForm = () => {
         break;
       case 3:
         fieldsToValidate = ['category'];
-        if (category === 'junior-doctor' || category === 'senior-doctor' || category === 'doctor-with-spouse') {
+        if (category === 'junior-doctor' || category === 'senior-doctor' || category === 'doctor-with-spouse' || category === 'virtual-junior-doctor' || category === 'virtual-senior-doctor') {
           fieldsToValidate.push('chapterOfGraduation');
         }
         break;
