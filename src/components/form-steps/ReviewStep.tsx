@@ -15,7 +15,7 @@ const formData = form.getValues();
 
 
 
-  const formatDate = (date: Date | string) => {
+  const formatDate = (date?: Date | string) => {
     if (!date) return 'Not specified';
     return new Date(date).toLocaleDateString('en-US', { 
       year: 'numeric', 

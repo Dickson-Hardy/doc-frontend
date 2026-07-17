@@ -64,7 +64,7 @@ export interface RegistrationFormData {
   spouseEmail?: string;
 
   // Section 4: Conference Logistics
-  dateOfArrival: Date;
+  dateOfArrival?: Date;
 
   // Section 4b: Accommodation Details
   accommodationType?: AccommodationType;

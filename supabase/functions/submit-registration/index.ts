@@ -13,6 +13,15 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json();
     const { email, surname, firstName, category } = body;
+    const isVirtual = typeof category === "string" && category.startsWith("virtual-");
+
+    if (!email || !surname || !firstName || !category) {
+      throw new Error("Email, surname, first name, and category are required");
+    }
+
+    if (!isVirtual && !body.dateOfArrival) {
+      throw new Error("Date of arrival is required for in-person registration");
+    }
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -48,7 +57,6 @@ Deno.serve(async (req) => {
 
     const now = new Date();
     const deadline = new Date("2026-05-18T23:59:59+01:00");
-    const isVirtual = category?.startsWith("virtual-");
     const lateFee = (now > deadline && !isVirtual) ? 10000 : 0;
 
     const { data: settings } = await supabase

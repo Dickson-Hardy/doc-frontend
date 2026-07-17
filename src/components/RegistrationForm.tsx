@@ -63,6 +63,16 @@ const registrationSchema = z.object({
   abstractFileUrl: z.string().optional(),
   abstractFile: z.any().optional(),
 }).superRefine((data, ctx) => {
+  // Virtual attendees do not travel to the conference, but an arrival date is
+  // still required for every in-person registration.
+  if (!data.category.startsWith('virtual-') && !data.dateOfArrival) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Date of arrival is required for in-person registration',
+      path: ['dateOfArrival'],
+    });
+  }
+
   // If doctor-with-spouse, spouse details are required
   if (data.category === 'doctor-with-spouse') {
     if (!data.spouseSurname || !data.spouseFirstName || !data.spouseEmail) {
