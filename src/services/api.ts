@@ -61,7 +61,10 @@ export const registrationApi = {
     metadata?: any;
   }) => {
     const { data: result, error } = await supabase.functions.invoke('paystack-init', {
-      body: data,
+      body: {
+        ...data,
+        callbackUrl: `${window.location.origin}/payment/callback`,
+      },
     });
     if (error) throw new ApiError(400, error.message);
     return result as {

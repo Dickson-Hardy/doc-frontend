@@ -19,13 +19,28 @@ function generateRef() {
   return `CMDA-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
 }
 
+function getCallbackUrl(value: unknown): string | undefined {
+  const fallback = Deno.env.get("FRONTEND_URL");
+  const candidate = typeof value === "string" && value ? value : fallback ? `${fallback.replace(/\/$/, "")}/payment/callback` : "";
+
+  if (!candidate) return undefined;
+
+  try {
+    const url = new URL(candidate);
+    return url.protocol === "https:" || url.hostname === "localhost" ? url.toString() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    const { email, reference, metadata } = await req.json();
+    const { email, reference, metadata, callbackUrl: requestedCallbackUrl } = await req.json();
+    const callbackUrl = getCallbackUrl(requestedCallbackUrl);
 
     const secretKey = Deno.env.get("PAYSTACK_SECRET_KEY");
     if (!secretKey) throw new Error("PAYSTACK_SECRET_KEY not set");
@@ -118,6 +133,7 @@ Deno.serve(async (req) => {
             reference: existingRef,
             metadata,
           };
+          if (callbackUrl) initBody.callback_url = callbackUrl;
           if (registration.splitCode) initBody.split_code = registration.splitCode;
 
           const initRes = await fetch("https://api.paystack.co/transaction/initialize", {
@@ -156,6 +172,7 @@ Deno.serve(async (req) => {
         reference: freshRef,
         metadata,
       };
+      if (callbackUrl) body.callback_url = callbackUrl;
       if (registration.splitCode) body.split_code = registration.splitCode;
 
       const response = await fetch("https://api.paystack.co/transaction/initialize", {

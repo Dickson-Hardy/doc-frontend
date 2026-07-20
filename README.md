@@ -207,6 +207,7 @@ vercel --prod
 - [ ] Neon PostgreSQL configured
 - [ ] MongoDB Atlas with member data
 - [ ] Paystack live keys configured
+- [ ] Paystack webhook URL configured as `https://sfsmorwxipeuvdriqzft.supabase.co/functions/v1/paystack-webhook`
 - [ ] Backend deployed and tested
 - [ ] Frontend deployed and tested
 - [ ] CORS configured correctly
