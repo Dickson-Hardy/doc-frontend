@@ -11,7 +11,9 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check:blob-uploads": "node scripts/check-blob-uploads.mjs"
+    "check:blob-uploads": "node scripts/check-blob-uploads.mjs",
+    "migration:push": "powershell -ExecutionPolicy Bypass -File scripts/push-supabase-migrations.ps1",
+    "migration:dry-run": "powershell -ExecutionPolicy Bypass -File scripts/push-supabase-migrations.ps1 -DryRun"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
