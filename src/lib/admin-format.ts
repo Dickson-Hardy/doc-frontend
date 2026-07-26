@@ -65,6 +65,9 @@ const categoryLabels: Record<string, string> = {
   'junior-doctor': 'Junior Doctor',
   'senior-doctor': 'Senior Doctor',
   'doctor-with-spouse': 'Doctor with Spouse',
+  'virtual-student': 'Virtual Student',
+  'virtual-junior-doctor': 'Virtual Junior Doctor',
+  'virtual-senior-doctor': 'Virtual Senior Doctor',
 };
 
 export function formatAdminCategory(category?: string | null): string {

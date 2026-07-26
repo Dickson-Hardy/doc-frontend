@@ -8,6 +8,32 @@ export interface AdminUser {
   role: string;
 }
 
+export interface ParticipationCheckIn {
+  id: string;
+  registrationId: string;
+  scannedAt: string;
+  scannerEmail: string | null;
+  scanSource: 'qr' | 'image_upload' | 'legacy';
+  participant: {
+    firstName: string;
+    surname: string;
+    email: string;
+    category: string;
+    paymentStatus: string;
+  };
+}
+
+export interface CheckInResult {
+  checkInId: string;
+  alreadyCheckedIn: boolean;
+  scannedAt: string;
+  firstName: string;
+  surname: string;
+  email: string;
+  category: string;
+  paymentStatus: string;
+}
+
 export const authApi = {
   login: async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -156,16 +182,65 @@ export const adminApi = {
     return { data: data || [], total: count || 0 };
   },
 
-  verifyAttendance: async (registrationId: string) => {
-    const { data, error } = await supabase
-      .from('registrations')
-      .update({ attendanceVerified: true, verifiedAt: new Date().toISOString() })
-      .eq('id', registrationId)
-      .select()
-      .single();
+  verifyAttendance: async (
+    registrationId: string,
+    scanSource: 'qr' | 'image_upload' = 'qr',
+  ): Promise<CheckInResult> => {
+    const { data, error } = await supabase.rpc('check_in_registration', {
+      p_registration_id: registrationId,
+      p_scan_source: scanSource,
+    });
 
     if (error) throw error;
-    return data;
+    const checkIn = data?.[0];
+    if (!checkIn) throw new Error('Check-in was not recorded');
+
+    return {
+      checkInId: checkIn.check_in_id,
+      alreadyCheckedIn: checkIn.already_checked_in,
+      scannedAt: checkIn.scanned_at,
+      firstName: checkIn.first_name,
+      surname: checkIn.surname,
+      email: checkIn.email,
+      category: checkIn.category,
+      paymentStatus: checkIn.payment_status,
+    };
+  },
+
+  getParticipationCheckIns: async (limit = 100) => {
+    const { data, count, error } = await supabase
+      .from('participation_check_ins')
+      .select(`
+        id,
+        registration_id,
+        scanned_at,
+        scanner_email,
+        scan_source,
+        registrations!inner (
+          firstName,
+          surname,
+          email,
+          category,
+          paymentStatus
+        )
+      `, { count: 'exact' })
+      .order('scanned_at', { ascending: false })
+      .range(0, Math.max(0, limit - 1));
+
+    if (error) throw error;
+
+    const checkIns: ParticipationCheckIn[] = (data || []).map((row: any) => ({
+      id: row.id,
+      registrationId: row.registration_id,
+      scannedAt: row.scanned_at,
+      scannerEmail: row.scanner_email,
+      scanSource: row.scan_source,
+      participant: Array.isArray(row.registrations)
+        ? row.registrations[0]
+        : row.registrations,
+    }));
+
+    return { data: checkIns, total: count || 0 };
   },
 
   getPricingAudit: async () => {

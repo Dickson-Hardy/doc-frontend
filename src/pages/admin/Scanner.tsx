@@ -1,16 +1,28 @@
-import { useState, useRef, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { BrowserMultiFormatReader } from '@zxing/library';
-import { Camera, CheckCircle, XCircle, Upload, QrCode } from 'lucide-react';
+import { Camera, CheckCircle, RefreshCw, Upload, Users, XCircle, QrCode } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { adminApi } from '@/services/admin';
+import type { ParticipationCheckIn } from '@/services/admin';
+import {
+  formatAdminCategory,
+  formatAdminDateTime,
+  formatAdminNumber,
+} from '@/lib/admin-format';
 
 interface ScanResult {
   registrationId: string;
   email: string;
   name: string;
+  category: string;
+  paymentStatus: string;
   verified: boolean;
+  checkedInAt?: string;
+  alreadyCheckedIn?: boolean;
+  scanSource: 'qr' | 'image_upload';
 }
 
 const Scanner = () => {
@@ -18,20 +30,82 @@ const Scanner = () => {
   const [result, setResult] = useState<ScanResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
+  const [checkIns, setCheckIns] = useState<ParticipationCheckIn[]>([]);
+  const [checkInTotal, setCheckInTotal] = useState(0);
+  const [loadingCheckIns, setLoadingCheckIns] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
   const codeReader = useRef<BrowserMultiFormatReader | null>(null);
+  const processingScan = useRef(false);
+
+  const loadCheckIns = useCallback(async () => {
+    setLoadingCheckIns(true);
+    try {
+      const response = await adminApi.getParticipationCheckIns();
+      setCheckIns(response.data);
+      setCheckInTotal(response.total);
+    } catch (err) {
+      console.error('Failed to load participation records:', err);
+    } finally {
+      setLoadingCheckIns(false);
+    }
+  }, []);
 
   useEffect(() => {
     codeReader.current = new BrowserMultiFormatReader();
+    void loadCheckIns();
+
     return () => {
-      stopScanning();
+      codeReader.current?.reset();
     };
-  }, []);
+  }, [loadCheckIns]);
+
+  const stopScanning = () => {
+    codeReader.current?.reset();
+    setScanning(false);
+  };
+
+  const processScanText = async (
+    rawText: string,
+    scanSource: 'qr' | 'image_upload',
+  ) => {
+    stopScanning();
+    setError(null);
+    setResult(null);
+
+    try {
+      const scannedData = JSON.parse(rawText);
+      if (typeof scannedData.registrationId !== 'string' || !scannedData.registrationId) {
+        throw new Error('Invalid conference QR code');
+      }
+
+      const registration = await adminApi.getRegistration(scannedData.registrationId);
+      const isPaid = registration.paymentStatus === 'paid';
+
+      setResult({
+        registrationId: registration.id,
+        email: registration.email,
+        name: `${registration.firstName} ${registration.surname}`,
+        category: registration.category,
+        paymentStatus: registration.paymentStatus,
+        verified: Boolean(registration.attendanceVerified),
+        checkedInAt: registration.verifiedAt || undefined,
+        alreadyCheckedIn: Boolean(registration.attendanceVerified),
+        scanSource,
+      });
+
+      if (!isPaid) {
+        setError('This registration has not been paid and cannot be checked in.');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Invalid QR code or registration not found');
+    }
+  };
 
   const startScanning = async () => {
     try {
       setError(null);
       setResult(null);
+      processingScan.current = false;
       setScanning(true);
 
       const videoInputDevices = await codeReader.current?.listVideoInputDevices();
@@ -39,22 +113,17 @@ const Scanner = () => {
         throw new Error('No camera found');
       }
 
-      const selectedDeviceId = videoInputDevices[0].deviceId;
-
       codeReader.current?.decodeFromVideoDevice(
-        selectedDeviceId,
+        videoInputDevices[0].deviceId,
         videoRef.current!,
-        (result, error) => {
-          if (result) {
-            try {
-              const data = JSON.parse(result.getText());
-              setResult(data);
-              stopScanning();
-            } catch (e) {
-              setError('Invalid QR code format');
-            }
+        (scanResult) => {
+          if (scanResult && !processingScan.current) {
+            processingScan.current = true;
+            void processScanText(scanResult.getText(), 'qr').finally(() => {
+              processingScan.current = false;
+            });
           }
-        }
+        },
       );
     } catch (err: any) {
       setError(err.message || 'Failed to start camera');
@@ -62,36 +131,22 @@ const Scanner = () => {
     }
   };
 
-  const stopScanning = () => {
-    codeReader.current?.reset();
-    setScanning(false);
-  };
-
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
+    event.target.value = '';
     if (!file) return;
 
+    const imageUrl = URL.createObjectURL(file);
     try {
       setError(null);
       setResult(null);
-
-      const imageUrl = URL.createObjectURL(file);
-      const img = new Image();
-      img.src = imageUrl;
-
-      img.onload = async () => {
-        try {
-          const result = await codeReader.current?.decodeFromImageUrl(imageUrl);
-          if (result) {
-            const data = JSON.parse(result.getText());
-            setResult(data);
-          }
-        } catch (e) {
-          setError('Could not read QR code from image');
-        }
-      };
-    } catch (err) {
-      setError('Failed to process image');
+      const decoded = await codeReader.current?.decodeFromImageUrl(imageUrl);
+      if (!decoded) throw new Error('Could not read QR code from image');
+      await processScanText(decoded.getText(), 'image_upload');
+    } catch (err: any) {
+      setError(err.message || 'Could not read QR code from image');
+    } finally {
+      URL.revokeObjectURL(imageUrl);
     }
   };
 
@@ -99,11 +154,21 @@ const Scanner = () => {
     if (!result) return;
 
     setVerifying(true);
+    setError(null);
     try {
-      await adminApi.verifyAttendance(result.registrationId);
-      setResult({ ...result, verified: true });
+      const checkIn = await adminApi.verifyAttendance(
+        result.registrationId,
+        result.scanSource,
+      );
+      setResult((current) => current ? {
+        ...current,
+        verified: true,
+        checkedInAt: checkIn.scannedAt,
+        alreadyCheckedIn: checkIn.alreadyCheckedIn,
+      } : current);
+      await loadCheckIns();
     } catch (err: any) {
-      setError(err.message || 'Verification failed');
+      setError(err.message || 'Check-in failed');
     } finally {
       setVerifying(false);
     }
@@ -113,7 +178,9 @@ const Scanner = () => {
     <div className="space-y-5">
       <div>
         <h1 className="text-2xl font-bold text-slate-900">QR Scanner</h1>
-        <p className="text-sm text-slate-500 mt-1">Scan participant QR codes for check-in</p>
+        <p className="text-sm text-slate-500 mt-1">
+          Scan participant QR codes and keep a participation record
+        </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -177,7 +244,6 @@ const Scanner = () => {
           </CardContent>
         </Card>
 
-        {/* Result Card */}
         <Card className="border-slate-200">
           <CardHeader className="pb-3">
             <CardTitle className="text-base text-slate-900">Scan Result</CardTitle>
@@ -190,15 +256,18 @@ const Scanner = () => {
                     <div className="text-center">
                       <CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-2" />
                       <p className="text-lg font-semibold text-green-600">
-                        Attendance Verified
+                        {result.alreadyCheckedIn ? 'Already Checked In' : 'Participation Recorded'}
                       </p>
+                      {result.checkedInAt && (
+                        <p className="text-xs text-slate-500 mt-1">
+                          {formatAdminDateTime(result.checkedInAt)}
+                        </p>
+                      )}
                     </div>
                   ) : (
                     <div className="text-center">
                       <Camera className="w-16 h-16 text-blue-600 mx-auto mb-2" />
-                      <p className="text-lg font-semibold text-blue-600">
-                        Ready to Verify
-                      </p>
+                      <p className="text-lg font-semibold text-blue-600">Ready to Check In</p>
                     </div>
                   )}
                 </div>
@@ -212,19 +281,27 @@ const Scanner = () => {
                     <p className="text-sm text-slate-600">Email</p>
                     <p className="font-medium text-slate-900">{result.email}</p>
                   </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="outline">{formatAdminCategory(result.category)}</Badge>
+                    <Badge variant={result.paymentStatus === 'paid' ? 'default' : 'destructive'}>
+                      {result.paymentStatus}
+                    </Badge>
+                  </div>
                   <div>
                     <p className="text-sm text-slate-600">Registration ID</p>
-                    <p className="font-mono text-sm text-slate-900">{result.registrationId}</p>
+                    <p className="font-mono text-sm text-slate-900 break-all">
+                      {result.registrationId}
+                    </p>
                   </div>
                 </div>
 
-                {!result.verified && (
+                {!result.verified && result.paymentStatus === 'paid' && (
                   <Button
                     onClick={verifyAttendance}
                     disabled={verifying}
                     className="w-full"
                   >
-                    {verifying ? 'Verifying...' : 'Verify Attendance'}
+                    {verifying ? 'Recording...' : 'Mark Participation'}
                   </Button>
                 )}
 
@@ -248,6 +325,80 @@ const Scanner = () => {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="border-slate-200">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <CardTitle className="text-base text-slate-900 flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Participation Records
+              </CardTitle>
+              <p className="text-sm text-slate-500 mt-1">
+                {loadingCheckIns
+                  ? 'Loading check-ins...'
+                  : `${formatAdminNumber(checkInTotal)} participants checked in`}
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={loadCheckIns}
+              disabled={loadingCheckIns}
+            >
+              <RefreshCw className={`w-4 h-4 mr-1.5 ${loadingCheckIns ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loadingCheckIns ? (
+            <div className="flex justify-center py-10">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-slate-700" />
+            </div>
+          ) : checkIns.length === 0 ? (
+            <div className="text-center py-10 text-sm text-slate-500">
+              No participation has been recorded yet.
+            </div>
+          ) : (
+            <div className="overflow-x-auto border border-slate-200 rounded-lg">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200">
+                    <th className="text-left py-2.5 px-4 font-semibold text-slate-600">Participant</th>
+                    <th className="text-left py-2.5 px-4 font-semibold text-slate-600">Category</th>
+                    <th className="text-left py-2.5 px-4 font-semibold text-slate-600">Checked In</th>
+                    <th className="text-left py-2.5 px-4 font-semibold text-slate-600">Scanner</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {checkIns.map((checkIn) => (
+                    <tr key={checkIn.id} className="border-b border-slate-100 last:border-0">
+                      <td className="py-2.5 px-4">
+                        <p className="font-medium text-slate-900">
+                          {checkIn.participant.firstName} {checkIn.participant.surname}
+                        </p>
+                        <p className="text-xs text-slate-500">{checkIn.participant.email}</p>
+                      </td>
+                      <td className="py-2.5 px-4">
+                        <Badge variant="outline" className="font-normal">
+                          {formatAdminCategory(checkIn.participant.category)}
+                        </Badge>
+                      </td>
+                      <td className="py-2.5 px-4 text-slate-600 whitespace-nowrap">
+                        {formatAdminDateTime(checkIn.scannedAt)}
+                      </td>
+                      <td className="py-2.5 px-4 text-slate-600">
+                        {checkIn.scannerEmail || (checkIn.scanSource === 'legacy' ? 'Previous record' : '-')}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };
