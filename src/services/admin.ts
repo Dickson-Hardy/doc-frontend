@@ -13,7 +13,7 @@ export interface ParticipationCheckIn {
   registrationId: string;
   scannedAt: string;
   scannerEmail: string | null;
-  scanSource: 'qr' | 'image_upload' | 'legacy';
+  scanSource: 'qr' | 'image_upload' | 'manual' | 'legacy';
   participant: {
     firstName: string;
     surname: string;
@@ -32,6 +32,13 @@ export interface CheckInResult {
   email: string;
   category: string;
   paymentStatus: string;
+}
+
+export interface ManualPaymentConfirmation {
+  auditId: string;
+  registrationId: string;
+  paymentStatus: string;
+  paidAt: string;
 }
 
 export interface EmailRecipient {
@@ -251,7 +258,7 @@ export const adminApi = {
 
   verifyAttendance: async (
     registrationId: string,
-    scanSource: 'qr' | 'image_upload' = 'qr',
+    scanSource: 'qr' | 'image_upload' | 'manual' = 'qr',
   ): Promise<CheckInResult> => {
     const { data, error } = await supabase.rpc('check_in_registration', {
       p_registration_id: registrationId,
@@ -274,7 +281,8 @@ export const adminApi = {
     };
   },
 
-  getParticipationCheckIns: async (limit = 100) => {
+  getParticipationCheckIns: async (page = 1, limit = 25) => {
+    const offset = Math.max(0, page - 1) * limit;
     const { data, count, error } = await supabase
       .from('participation_check_ins')
       .select(`
@@ -292,7 +300,7 @@ export const adminApi = {
         )
       `, { count: 'exact' })
       .order('scanned_at', { ascending: false })
-      .range(0, Math.max(0, limit - 1));
+      .range(offset, offset + Math.max(0, limit - 1));
 
     if (error) throw error;
 
@@ -398,20 +406,34 @@ export const adminApi = {
     return data;
   },
 
-  confirmPaymentManually: async (registrationId: string, amount: number) => {
-    const { data, error } = await supabase
-      .from('registrations')
-      .update({
-        paymentStatus: 'paid',
-        totalAmount: amount,
-        paidAt: new Date().toISOString(),
-      })
-      .eq('id', registrationId)
-      .select()
-      .single();
-
+  confirmPaymentManually: async (
+    registrationId: string,
+    reason: string,
+  ): Promise<ManualPaymentConfirmation> => {
+    const { data, error } = await supabase.rpc('confirm_registration_payment_manually', {
+      p_registration_id: registrationId,
+      p_reason: reason,
+    });
     if (error) throw error;
-    return data;
+    const result = data?.[0];
+    if (!result) throw new Error('Payment confirmation was not recorded');
+    return {
+      auditId: result.audit_id,
+      registrationId: result.registration_id,
+      paymentStatus: result.payment_status,
+      paidAt: result.paid_at,
+    };
+  },
+
+  undoManualPaymentConfirmation: async (auditId: string, reason: string) => {
+    const { data, error } = await supabase.rpc('revert_manual_payment_confirmation', {
+      p_audit_id: auditId,
+      p_reason: reason,
+    });
+    if (error) throw error;
+    const result = data?.[0];
+    if (!result) throw new Error('Payment confirmation was not reverted');
+    return result;
   },
 
   getRegistration: async (id: string) => {

@@ -81,60 +81,60 @@ const Dashboard = () => {
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="border-slate-200 hover:shadow-md transition-shadow">
-          <CardContent className="p-5">
+      <div className="grid min-w-0 grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+        <Card className="min-w-0 border-slate-200 transition-shadow hover:shadow-md">
+          <CardContent className="p-4 sm:p-5">
             <div className="flex items-center justify-between">
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Total</p>
-                <p className="text-3xl font-bold text-slate-900 mt-1">{formatAdminNumber(stats.total)}</p>
+                <p className="mt-1 text-2xl font-bold text-slate-900 sm:text-3xl">{formatAdminNumber(stats.total)}</p>
               </div>
-              <div className="rounded-xl bg-blue-50 p-3">
+              <div className="hidden rounded-xl bg-blue-50 p-3 sm:block">
                 <Users className="h-6 w-6 text-blue-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-emerald-200 bg-gradient-to-br from-emerald-50 to-white hover:shadow-md transition-shadow">
-          <CardContent className="p-5">
+        <Card className="min-w-0 border-emerald-200 bg-gradient-to-br from-emerald-50 to-white transition-shadow hover:shadow-md">
+          <CardContent className="p-4 sm:p-5">
             <div className="flex items-center justify-between">
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs font-medium text-emerald-600 uppercase tracking-wider">Paid</p>
-                <p className="text-3xl font-bold text-emerald-700 mt-1">{formatAdminNumber(stats.paid)}</p>
+                <p className="mt-1 text-2xl font-bold text-emerald-700 sm:text-3xl">{formatAdminNumber(stats.paid)}</p>
                 <p className="text-xs text-emerald-600/70 mt-1">{paidPct}% conversion</p>
               </div>
-              <div className="rounded-xl bg-emerald-100 p-3">
+              <div className="hidden rounded-xl bg-emerald-100 p-3 sm:block">
                 <DollarSign className="h-6 w-6 text-emerald-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-amber-200 bg-gradient-to-br from-amber-50 to-white hover:shadow-md transition-shadow">
-          <CardContent className="p-5">
+        <Card className="min-w-0 border-amber-200 bg-gradient-to-br from-amber-50 to-white transition-shadow hover:shadow-md">
+          <CardContent className="p-4 sm:p-5">
             <div className="flex items-center justify-between">
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs font-medium text-amber-600 uppercase tracking-wider">Pending</p>
-                <p className="text-3xl font-bold text-amber-700 mt-1">{formatAdminNumber(stats.pending)}</p>
+                <p className="mt-1 text-2xl font-bold text-amber-700 sm:text-3xl">{formatAdminNumber(stats.pending)}</p>
                 <p className="text-xs text-amber-600/70 mt-1">{pendingPct}% of total</p>
               </div>
-              <div className="rounded-xl bg-amber-100 p-3">
+              <div className="hidden rounded-xl bg-amber-100 p-3 sm:block">
                 <Clock className="h-6 w-6 text-amber-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-rose-200 bg-gradient-to-br from-rose-50 to-white hover:shadow-md transition-shadow">
-          <CardContent className="p-5">
+        <Card className="min-w-0 border-rose-200 bg-gradient-to-br from-rose-50 to-white transition-shadow hover:shadow-md">
+          <CardContent className="p-4 sm:p-5">
             <div className="flex items-center justify-between">
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs font-medium text-rose-600 uppercase tracking-wider">Abandoned</p>
-                <p className="text-3xl font-bold text-rose-700 mt-1">{formatAdminNumber(stats.abandoned)}</p>
+                <p className="mt-1 text-2xl font-bold text-rose-700 sm:text-3xl">{formatAdminNumber(stats.abandoned)}</p>
                 <p className="text-xs text-rose-600/70 mt-1">{abandonedPct}% drop-off</p>
               </div>
-              <div className="rounded-xl bg-rose-100 p-3">
+              <div className="hidden rounded-xl bg-rose-100 p-3 sm:block">
                 <UserX className="h-6 w-6 text-rose-600" />
               </div>
             </div>
@@ -150,10 +150,10 @@ const Dashboard = () => {
               <TrendingUp className="h-5 w-5 text-emerald-600" />
               <h3 className="text-sm font-semibold text-slate-900">Revenue Overview</h3>
             </div>
-            <div className="rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 p-6 text-white">
+            <div className="min-w-0 overflow-hidden rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 p-4 text-white sm:p-6">
               <p className="text-sm font-medium text-emerald-100">Total Revenue</p>
-              <p className="text-4xl font-bold mt-1">{formatAdminCurrency(stats.revenue)}</p>
-              <div className="mt-4 flex items-center gap-6">
+              <p className="mt-1 break-words text-3xl font-bold sm:text-4xl">{formatAdminCurrency(stats.revenue)}</p>
+              <div className="mt-4 flex flex-wrap items-center gap-4 sm:gap-6">
                 <div>
                   <p className="text-xs text-emerald-200">Avg. per paid</p>
                   <p className="text-lg font-semibold">{formatAdminCurrency(avgRevenue)}</p>

@@ -1,9 +1,31 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Search, RefreshCw, Download, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import {
+  Search,
+  RefreshCw,
+  Download,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  ShieldAlert,
+} from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { ToastAction } from '@/components/ui/toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
   Select,
   SelectContent,
@@ -51,6 +73,9 @@ const Registrations = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
   const [total, setTotal] = useState(0);
+  const [confirmTarget, setConfirmTarget] = useState<Registration | null>(null);
+  const [confirmReason, setConfirmReason] = useState('');
+  const [confirming, setConfirming] = useState(false);
   const { toast } = useToast();
 
   const totalPages = Math.ceil(total / pageSize);
@@ -104,24 +129,80 @@ const Registrations = () => {
   const handleRequery = async (registrationId: string) => {
     try {
       const response = await adminApi.requeryPayment(registrationId);
-      if (response.data.status === 'success') {
-        toast({ title: 'Verified', description: response.data.message });
+      if (response.status === 'success') {
+        toast({ title: 'Verified', description: response.message });
         await fetchRegistrations();
       } else {
-        toast({ title: 'Not found', description: response.data.message, variant: 'destructive' });
+        toast({
+          title: 'Payment not completed',
+          description: response.message || `Paystack status: ${response.data?.status || 'not successful'}`,
+          variant: 'destructive',
+        });
       }
     } catch (error: any) {
       toast({ title: 'Failed', description: error.message, variant: 'destructive' });
     }
   };
 
-  const handleConfirmPayment = async (registrationId: string, amount: number) => {
+  const handleUndoConfirmation = async (auditId: string, participantName: string) => {
     try {
-      await adminApi.confirmPaymentManually(registrationId, amount);
-      toast({ title: 'Confirmed', description: 'Payment marked as paid' });
+      await adminApi.undoManualPaymentConfirmation(
+        auditId,
+        `Undo accidental confirmation for ${participantName}`,
+      );
+      toast({
+        title: 'Confirmation reversed',
+        description: `${participantName} is pending again.`,
+      });
       await fetchRegistrations();
     } catch (error: any) {
-      toast({ title: 'Failed', description: error.message, variant: 'destructive' });
+      toast({
+        title: 'Could not reverse confirmation',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleConfirmPayment = async () => {
+    if (!confirmTarget || confirmReason.trim().length < 5) return;
+
+    setConfirming(true);
+    try {
+      const participantName = `${confirmTarget.firstName} ${confirmTarget.surname}`;
+      const confirmation = await adminApi.confirmPaymentManually(
+        confirmTarget.id,
+        confirmReason.trim(),
+      );
+
+      let emailSent = true;
+      try {
+        await adminApi.resendEmail(confirmTarget.id);
+      } catch {
+        emailSent = false;
+      }
+
+      setConfirmTarget(null);
+      setConfirmReason('');
+      toast({
+        title: 'Payment confirmed',
+        description: emailSent
+          ? `${participantName} was marked paid and emailed.`
+          : `${participantName} was marked paid, but the email failed.`,
+        action: (
+          <ToastAction
+            altText={`Undo payment confirmation for ${participantName}`}
+            onClick={() => void handleUndoConfirmation(confirmation.auditId, participantName)}
+          >
+            Undo
+          </ToastAction>
+        ),
+      });
+      await fetchRegistrations();
+    } catch (error: any) {
+      toast({ title: 'Confirmation failed', description: error.message, variant: 'destructive' });
+    } finally {
+      setConfirming(false);
     }
   };
 
@@ -241,7 +322,76 @@ const Registrations = () => {
           <div className="text-center py-16 text-slate-500">No registrations found</div>
         ) : (
           <>
-            <div className="overflow-x-auto">
+            <div className="divide-y divide-slate-100 md:hidden">
+              {registrations.map((reg, idx) => (
+                <article key={reg.id} className="space-y-3 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-xs text-slate-400">#{startRow + idx}</p>
+                      <h2 className="font-semibold text-slate-900">
+                        {reg.firstName} {reg.surname}
+                      </h2>
+                      <p className="break-all text-xs text-slate-500">{reg.email}</p>
+                    </div>
+                    <PaymentStatusBadge status={reg.paymentStatus} />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="text-xs text-slate-500">Category</p>
+                      <p className="font-medium text-slate-700">{formatAdminCategory(reg.category)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-slate-500">Amount</p>
+                      <p className="font-semibold text-slate-900">{formatAdminCurrency(reg.totalAmount)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500">Registered</p>
+                      <p className="text-slate-700">{formatAdminDate(reg.createdAt)}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {reg.paymentStatus === 'pending' && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setConfirmTarget(reg);
+                            setConfirmReason('');
+                          }}
+                          className="w-full border-green-300 text-green-700 hover:text-green-800"
+                        >
+                          Confirm Payment
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleRequery(reg.id)}
+                          className="w-full"
+                        >
+                          <RefreshCw className="mr-1 h-3.5 w-3.5" />
+                          Requery Paystack
+                        </Button>
+                      </>
+                    )}
+                    {reg.paymentStatus === 'paid' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleResendEmail(reg.id, reg.email)}
+                        className="w-full text-blue-700"
+                      >
+                        Resend Confirmation
+                      </Button>
+                    )}
+                  </div>
+                </article>
+              ))}
+            </div>
+
+            <div className="hidden overflow-x-auto md:block">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
@@ -286,7 +436,10 @@ const Registrations = () => {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => handleConfirmPayment(reg.id, reg.totalAmount)}
+                                onClick={() => {
+                                  setConfirmTarget(reg);
+                                  setConfirmReason('');
+                                }}
                                 className="h-7 text-xs text-green-600 hover:text-green-700 border-green-300"
                               >
                                 Confirm
@@ -321,17 +474,18 @@ const Registrations = () => {
             </div>
 
             {totalPages > 1 && (
-              <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200 bg-slate-50/50">
+              <div className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50/50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-xs text-slate-500">
                   Showing {formatAdminNumber(startRow)}-{formatAdminNumber(endRow)} of {formatAdminNumber(total)}
                 </p>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center justify-between gap-1 sm:justify-end">
                   <Button
                     variant="outline"
                     size="sm"
                     className="h-8 w-8 p-0"
                     disabled={page <= 1}
                     onClick={() => setPage(1)}
+                    aria-label="First registrations page"
                   >
                     <ChevronsLeft className="h-4 w-4" />
                   </Button>
@@ -341,6 +495,7 @@ const Registrations = () => {
                     className="h-8 w-8 p-0"
                     disabled={page <= 1}
                     onClick={() => setPage(p => p - 1)}
+                    aria-label="Previous registrations page"
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
@@ -353,6 +508,7 @@ const Registrations = () => {
                     className="h-8 w-8 p-0"
                     disabled={page >= totalPages}
                     onClick={() => setPage(p => p + 1)}
+                    aria-label="Next registrations page"
                   >
                     <ChevronRight className="h-4 w-4" />
                   </Button>
@@ -362,6 +518,7 @@ const Registrations = () => {
                     className="h-8 w-8 p-0"
                     disabled={page >= totalPages}
                     onClick={() => setPage(totalPages)}
+                    aria-label="Last registrations page"
                   >
                     <ChevronsRight className="h-4 w-4" />
                   </Button>
@@ -371,6 +528,70 @@ const Registrations = () => {
           </>
         )}
       </div>
+
+      <AlertDialog
+        open={confirmTarget !== null}
+        onOpenChange={(open) => {
+          if (!open && !confirming) {
+            setConfirmTarget(null);
+            setConfirmReason('');
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <ShieldAlert className="h-5 w-5 text-amber-600" />
+              Confirm payment manually?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Use Requery first for Paystack payments. Manual confirmation should only be used when
+              you have separate payment evidence.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          {confirmTarget && (
+            <div className="space-y-4">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm">
+                <p className="font-semibold text-slate-900">
+                  {confirmTarget.firstName} {confirmTarget.surname}
+                </p>
+                <p className="break-all text-slate-500">{confirmTarget.email}</p>
+                <p className="mt-2 font-semibold text-slate-900">
+                  {formatAdminCurrency(confirmTarget.totalAmount)}
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="manual-confirmation-reason">Reason or payment evidence</Label>
+                <Textarea
+                  id="manual-confirmation-reason"
+                  value={confirmReason}
+                  onChange={(event) => setConfirmReason(event.target.value)}
+                  placeholder="Example: Bank transfer confirmed on statement"
+                  disabled={confirming}
+                  maxLength={300}
+                />
+                <p className="text-xs text-slate-500">
+                  This reason and your admin account will be stored in the payment audit log.
+                </p>
+              </div>
+            </div>
+          )}
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={confirming}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={confirming || confirmReason.trim().length < 5}
+              onClick={(event) => {
+                event.preventDefault();
+                void handleConfirmPayment();
+              }}
+            >
+              {confirming ? 'Confirming…' : 'Confirm Payment'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

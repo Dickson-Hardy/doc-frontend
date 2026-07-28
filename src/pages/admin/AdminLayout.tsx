@@ -21,15 +21,20 @@ const AdminLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
 
   useEffect(() => {
     const token = localStorage.getItem('adminToken');
     if (!token) {
       navigate('/admin/login');
+      return;
     }
-  }, [navigate]);
+    if (adminUser.role === 'scanner' && location.pathname !== '/admin/scanner') {
+      navigate('/admin/scanner', { replace: true });
+    }
+  }, [adminUser.role, location.pathname, navigate]);
 
-  const navigation = [
+  const allNavigation = [
     { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
     { name: 'Registrations', href: '/admin/registrations', icon: Users },
     { name: 'Spouse Registrations', href: '/admin/spouse-registrations', icon: Heart },
@@ -40,6 +45,9 @@ const AdminLayout = () => {
     { name: 'Payment Audit', href: '/admin/payment-audit', icon: ShieldCheck },
     { name: 'Settings', href: '/admin/settings', icon: SettingsIcon },
   ];
+  const navigation = adminUser.role === 'scanner'
+    ? allNavigation.filter((item) => item.name === 'Scanner')
+    : allNavigation;
 
   const isActive = (path: string) => {
     if (path === '/admin') {
@@ -54,8 +62,6 @@ const AdminLayout = () => {
     localStorage.removeItem('adminUser');
     navigate('/admin/login');
   };
-
-  const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
 
   return (
     <div className="min-h-screen bg-slate-100/80">
@@ -75,8 +81,10 @@ const AdminLayout = () => {
           <div className="flex items-center justify-between h-16 px-6 border-b border-slate-200">
             <h1 className="text-xl font-bold text-slate-900">CMDA Admin</h1>
             <button
+              type="button"
               onClick={() => setSidebarOpen(false)}
               className="rounded-md p-1 text-slate-600 hover:bg-slate-100 lg:hidden"
+              aria-label="Close admin navigation"
             >
               <X className="w-6 h-6" />
             </button>
@@ -99,6 +107,7 @@ const AdminLayout = () => {
                   key={item.name}
                   to={item.href}
                   onClick={() => setSidebarOpen(false)}
+                  aria-current={active ? 'page' : undefined}
                   className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${
                     active
                       ? 'bg-slate-900 text-white'
@@ -128,8 +137,11 @@ const AdminLayout = () => {
       <div className="lg:pl-64">
         <div className="sticky top-0 z-10 flex h-14 items-center border-b border-slate-200 bg-white/95 px-4 backdrop-blur lg:px-8">
           <button
+            type="button"
             onClick={() => setSidebarOpen(true)}
             className="rounded-md p-1 text-slate-700 hover:bg-slate-100 lg:hidden"
+            aria-label="Open admin navigation"
+            aria-expanded={sidebarOpen}
           >
             <Menu className="w-6 h-6" />
           </button>

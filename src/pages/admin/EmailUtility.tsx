@@ -277,45 +277,77 @@ const EmailUtility = () => {
           ) : recipients.length === 0 ? (
             <div className="text-center py-14 text-slate-500">No paid recipients found</div>
           ) : (
-            <div className="overflow-x-auto border border-slate-200 rounded-lg">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200">
-                    <th className="w-12 py-2.5 px-4" aria-label="Selection" />
-                    <th className="text-left py-2.5 px-4 font-semibold text-slate-600">Participant</th>
-                    <th className="text-left py-2.5 px-4 font-semibold text-slate-600">Category</th>
-                    <th className="text-left py-2.5 px-4 font-semibold text-slate-600">Payment Confirmed</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recipients.map((recipient) => (
-                    <tr key={recipient.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50">
-                      <td className="py-3 px-4">
-                        <Checkbox
-                          checked={selectedIds.has(recipient.id)}
-                          onCheckedChange={() => toggleRecipient(recipient.id)}
-                          aria-label={`Select ${recipient.firstName} ${recipient.surname}`}
-                        />
-                      </td>
-                      <td className="py-3 px-4">
-                        <p className="font-medium text-slate-900">
-                          {recipient.firstName} {recipient.surname}
-                        </p>
-                        <p className="text-xs text-slate-500">{recipient.email}</p>
-                      </td>
-                      <td className="py-3 px-4">
+            <>
+              <div className="space-y-2 md:hidden">
+                {recipients.map((recipient) => (
+                  <div
+                    key={recipient.id}
+                    className="flex items-start gap-3 rounded-lg border border-slate-200 p-4"
+                  >
+                    <Checkbox
+                      checked={selectedIds.has(recipient.id)}
+                      onCheckedChange={() => toggleRecipient(recipient.id)}
+                      aria-label={`Select ${recipient.firstName} ${recipient.surname}`}
+                      className="mt-1"
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-medium text-slate-900">
+                        {recipient.firstName} {recipient.surname}
+                      </span>
+                      <span className="block break-all text-xs text-slate-500">{recipient.email}</span>
+                      <span className="mt-2 flex flex-wrap items-center gap-2">
                         <Badge variant="outline" className="font-normal">
                           {formatAdminCategory(recipient.category)}
                         </Badge>
-                      </td>
-                      <td className="py-3 px-4 text-slate-600 whitespace-nowrap">
-                        {formatAdminDateTime(recipient.paidAt)}
-                      </td>
+                        <span className="text-xs text-slate-500">
+                          Paid {formatAdminDateTime(recipient.paidAt)}
+                        </span>
+                      </span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="hidden overflow-x-auto rounded-lg border border-slate-200 md:block">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50">
+                      <th className="w-12 px-4 py-2.5" aria-label="Selection" />
+                      <th className="px-4 py-2.5 text-left font-semibold text-slate-600">Participant</th>
+                      <th className="px-4 py-2.5 text-left font-semibold text-slate-600">Category</th>
+                      <th className="px-4 py-2.5 text-left font-semibold text-slate-600">Payment Confirmed</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {recipients.map((recipient) => (
+                      <tr key={recipient.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50">
+                        <td className="px-4 py-3">
+                          <Checkbox
+                            checked={selectedIds.has(recipient.id)}
+                            onCheckedChange={() => toggleRecipient(recipient.id)}
+                            aria-label={`Select ${recipient.firstName} ${recipient.surname}`}
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <p className="font-medium text-slate-900">
+                            {recipient.firstName} {recipient.surname}
+                          </p>
+                          <p className="text-xs text-slate-500">{recipient.email}</p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge variant="outline" className="font-normal">
+                            {formatAdminCategory(recipient.category)}
+                          </Badge>
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 text-slate-600">
+                          {formatAdminDateTime(recipient.paidAt)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
 
           <div className="flex items-center justify-between">
@@ -329,6 +361,7 @@ const EmailUtility = () => {
                 className="h-8 w-8 p-0"
                 disabled={page <= 1 || loading}
                 onClick={() => setPage((current) => current - 1)}
+                aria-label="Previous email recipients page"
               >
                 <ChevronLeft className="w-4 h-4" />
               </Button>
@@ -338,6 +371,7 @@ const EmailUtility = () => {
                 className="h-8 w-8 p-0"
                 disabled={page >= totalPages || loading}
                 onClick={() => setPage((current) => current + 1)}
+                aria-label="Next email recipients page"
               >
                 <ChevronRight className="w-4 h-4" />
               </Button>
