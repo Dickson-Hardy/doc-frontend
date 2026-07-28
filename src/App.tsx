@@ -16,6 +16,7 @@ import Registrations from "./pages/admin/Registrations";
 import SpouseRegistrations from "./pages/admin/SpouseRegistrations";
 import RegistrationTracking from "./pages/admin/RegistrationTracking";
 import EmailLogs from "./pages/admin/EmailLogs";
+import EmailUtility from "./pages/admin/EmailUtility";
 import Scanner from "./pages/admin/Scanner";
 import Settings from "./pages/admin/Settings";
 import PaymentAudit from "./pages/admin/PaymentAudit";
@@ -47,6 +48,7 @@ const App = () => (
             <Route path="spouse-registrations" element={<SpouseRegistrations />} />
             <Route path="registration-tracking" element={<RegistrationTracking />} />
             <Route path="email-logs" element={<EmailLogs />} />
+            <Route path="email-utility" element={<EmailUtility />} />
             <Route path="scanner" element={<Scanner />} />
             <Route path="payment-audit" element={<PaymentAudit />} />
             <Route path="settings" element={<Settings />} />

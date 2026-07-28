@@ -11,7 +11,8 @@ import {
   Settings as SettingsIcon,
   ClipboardList,
   Heart,
-  ShieldCheck
+  ShieldCheck,
+  Send
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { authApi } from '@/services/admin';
@@ -34,6 +35,7 @@ const AdminLayout = () => {
     { name: 'Spouse Registrations', href: '/admin/spouse-registrations', icon: Heart },
     { name: 'Registration Tracking', href: '/admin/registration-tracking', icon: ClipboardList },
     { name: 'Email Logs', href: '/admin/email-logs', icon: Mail },
+    { name: 'Send Emails', href: '/admin/email-utility', icon: Send },
     { name: 'Scanner', href: '/admin/scanner', icon: QrCode },
     { name: 'Payment Audit', href: '/admin/payment-audit', icon: ShieldCheck },
     { name: 'Settings', href: '/admin/settings', icon: SettingsIcon },

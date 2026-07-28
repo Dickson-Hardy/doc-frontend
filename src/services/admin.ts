@@ -34,6 +34,29 @@ export interface CheckInResult {
   paymentStatus: string;
 }
 
+export interface EmailRecipient {
+  id: string;
+  email: string;
+  firstName: string;
+  surname: string;
+  category: string;
+  paidAt: string | null;
+  createdAt: string;
+}
+
+export interface BulkEmailResult {
+  status: 'completed';
+  requested: number;
+  sent: number;
+  failed: number;
+  results: Array<{
+    registrationId: string;
+    email?: string;
+    status: 'sent' | 'failed';
+    message?: string;
+  }>;
+}
+
 export const authApi = {
   login: async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -145,6 +168,50 @@ export const adminApi = {
     });
     if (error) throw error;
     return data;
+  },
+
+  getEmailRecipients: async (params: {
+    page?: number;
+    limit?: number;
+    category?: string;
+    search?: string;
+  } = {}) => {
+    const { page = 1, limit = 50, category, search } = params;
+    const offset = (page - 1) * limit;
+    let query = supabase
+      .from('registrations')
+      .select('id, email, firstName, surname, category, paidAt, createdAt', { count: 'exact' })
+      .eq('paymentStatus', 'paid');
+
+    if (category && category !== 'all') {
+      query = query.eq('category', category);
+    }
+    if (search?.trim()) {
+      const safeSearch = search.trim().replace(/[,%()]/g, ' ');
+      query = query.or(
+        `email.ilike.%${safeSearch}%,firstName.ilike.%${safeSearch}%,surname.ilike.%${safeSearch}%`,
+      );
+    }
+
+    const { data, count, error } = await query
+      .order('paidAt', { ascending: false, nullsFirst: false })
+      .range(offset, offset + limit - 1);
+
+    if (error) throw error;
+    return {
+      data: (data || []) as EmailRecipient[],
+      total: count || 0,
+    };
+  },
+
+  sendConfirmationEmails: async (registrationIds: string[]): Promise<BulkEmailResult> => {
+    const { data, error } = await supabase.functions.invoke('bulk-send-confirmations', {
+      body: { registrationIds },
+    });
+
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+    return data as BulkEmailResult;
   },
 
   getSpouseRegistrations: async () => {
