@@ -1,9 +1,36 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import nodemailer from "npm:nodemailer@7";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+async function sendWithSmtp(message: {
+  from: string;
+  to: string;
+  subject: string;
+  text: string;
+  html: string;
+}) {
+  const host = Deno.env.get("EMAIL_HOST") || "smtp.gmail.com";
+  const user = Deno.env.get("EMAIL_USER") || Deno.env.get("SMTP_USER");
+  const password = Deno.env.get("EMAIL_PASS");
+  const port = Number(Deno.env.get("EMAIL_PORT") || "465");
+
+  if (!user || !password) throw new Error("Gmail SMTP credentials are not configured");
+
+  const transporter = nodemailer.createTransport({
+    host,
+    port,
+    secure: port === 465,
+    requireTLS: port !== 465,
+    auth: { user, pass: password },
+    tls: { minVersion: "TLSv1.2" },
+  });
+
+  return transporter.sendMail(message);
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -11,12 +38,17 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { registrationId } = await req.json();
+    const { registrationId, source: requestedSource } = await req.json();
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
+    const callerToken = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+    const source = requestedSource === "utility"
+      && callerToken === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
+      ? "utility"
+      : "system";
 
     const { data: reg, error: fetchError } = await supabase
       .from("registrations")
@@ -25,18 +57,6 @@ Deno.serve(async (req) => {
       .single();
 
     if (fetchError || !reg) throw new Error("Registration not found");
-
-    const resendKey = Deno.env.get("RESEND_API_KEY");
-    if (!resendKey) {
-      await supabase.from("email_logs").insert({
-        recipientEmail: reg.email,
-        subject: "Registration Confirmed - CMDA Conference 2026",
-        status: "failed",
-        errorMessage: "RESEND_API_KEY not configured",
-        registrationId: reg.id,
-      });
-      throw new Error("RESEND_API_KEY not configured");
-    }
 
     const fromEmail = Deno.env.get("EMAIL_FROM") || "CMDA Conference <conference@dnconference.cmdanigeria.net>";
 
@@ -161,25 +181,71 @@ Deno.serve(async (req) => {
         `Your QR code: ${qrCodeUrl}\nPlease present it at check-in.\n`
       );
 
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${resendKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: fromEmail,
-        to: [reg.email],
-        subject: "CMDA Conference 2026 - Registration Confirmed",
-        text: textContent,
-        html: htmlContent,
-      }),
-    });
+    let provider = "resend";
+    if (source === "utility") {
+      const { data: reservedProvider, error: reservationError } = await supabase
+        .rpc("reserve_confirmation_email_provider", { p_source: source });
+      if (reservationError) throw reservationError;
+      provider = reservedProvider;
+    }
 
-    const result = await response.json();
+    if (provider === "limit_reached") {
+      throw new Error("Daily email utility limit reached");
+    }
 
-    if (!response.ok) {
-      throw new Error(result.message || result.error || `Resend API error: ${response.status}`);
+    const message = {
+      from: fromEmail,
+      to: reg.email,
+      subject: "CMDA Conference 2026 - Registration Confirmed",
+      text: textContent,
+      html: htmlContent,
+    };
+
+    let messageId: string | undefined;
+    try {
+      if (provider === "smtp") {
+        const smtpResult = await sendWithSmtp(message);
+        messageId = smtpResult.messageId;
+      } else {
+        const resendKey = Deno.env.get("RESEND_API_KEY");
+        if (!resendKey) throw new Error("RESEND_API_KEY not configured");
+
+        const response = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${resendKey}`,
+            "Content-Type": "application/json",
+            "User-Agent": "CMDA-Conference/1.0",
+          },
+          body: JSON.stringify({ ...message, to: [message.to] }),
+        });
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.message || result.error || `Resend API error: ${response.status}`);
+        }
+        messageId = result.id;
+      }
+    } catch (deliveryError) {
+      if (source === "utility") {
+        await supabase.rpc("release_confirmation_email_provider", {
+          p_source: source,
+          p_provider: provider,
+        });
+      }
+
+      const errorMessage = deliveryError instanceof Error
+        ? deliveryError.message
+        : "Email delivery failed";
+      await supabase.from("email_logs").insert({
+        recipientEmail: reg.email,
+        subject: "Registration Confirmed - CMDA Conference 2026",
+        status: "failed",
+        errorMessage,
+        registrationId: reg.id,
+        source,
+        provider,
+      });
+      throw deliveryError;
     }
 
     await supabase.from("email_logs").insert({
@@ -187,10 +253,12 @@ Deno.serve(async (req) => {
       subject: "Registration Confirmed - CMDA Conference 2026",
       status: "sent",
       registrationId: reg.id,
+      source,
+      provider,
     });
 
     return new Response(
-      JSON.stringify({ status: "sent", id: result.id }),
+      JSON.stringify({ status: "sent", id: messageId, provider }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {

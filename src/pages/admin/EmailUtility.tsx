@@ -182,7 +182,8 @@ const EmailUtility = () => {
         <Mail className="h-4 w-4" />
         <AlertDescription>
           This utility uses the existing confirmation template and only lists registrations with confirmed payment.
-          You can send to a maximum of {MAX_SELECTION} recipients at once.
+          You can send to a maximum of {MAX_SELECTION} recipients at once. The first 100 successful utility
+          emails each day use Resend; later emails use the configured Gmail SMTP fallback.
         </AlertDescription>
       </Alert>
 

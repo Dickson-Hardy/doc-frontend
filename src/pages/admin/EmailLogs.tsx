@@ -16,6 +16,8 @@ interface EmailLog {
   errorMessage: string;
   registrationId: string;
   sentAt: string;
+  source?: string;
+  provider?: string;
 }
 
 const EmailLogs = () => {
@@ -90,6 +92,11 @@ const EmailLogs = () => {
                         <Badge variant={log.status === 'sent' ? 'default' : 'destructive'} className="text-[10px] h-5">
                           {log.status.toUpperCase()}
                         </Badge>
+                        {log.provider && (
+                          <Badge variant="outline" className="text-[10px] h-5 uppercase">
+                            {log.provider}
+                          </Badge>
+                        )}
                       </div>
                       <p className="text-xs text-slate-600 truncate">{log.subject}</p>
                       {log.errorMessage && (

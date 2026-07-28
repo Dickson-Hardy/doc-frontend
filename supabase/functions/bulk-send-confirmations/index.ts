@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
       const batchResults = await Promise.all(batch.map(async (registration) => {
         try {
           const { data, error } = await supabase.functions.invoke("send-email", {
-            body: { registrationId: registration.id },
+            body: { registrationId: registration.id, source: "utility" },
           });
 
           if (error || data?.error) {
