@@ -6,13 +6,14 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-async function sendWithSmtp(message: {
-  from: string;
+interface EmailMessage {
   to: string;
   subject: string;
   text: string;
   html: string;
-}) {
+}
+
+async function sendWithSmtp(message: EmailMessage) {
   const host = Deno.env.get("EMAIL_HOST") || "smtp.gmail.com";
   const user = Deno.env.get("EMAIL_USER") || Deno.env.get("SMTP_USER");
   const password = Deno.env.get("EMAIL_PASS");
@@ -29,7 +30,8 @@ async function sendWithSmtp(message: {
     tls: { minVersion: "TLSv1.2" },
   });
 
-  return transporter.sendMail(message);
+  const from = Deno.env.get("SMTP_FROM") || `CMDA Nigeria <${user}>`;
+  return transporter.sendMail({ ...message, from });
 }
 
 Deno.serve(async (req) => {
@@ -58,7 +60,9 @@ Deno.serve(async (req) => {
 
     if (fetchError || !reg) throw new Error("Registration not found");
 
-    const fromEmail = Deno.env.get("EMAIL_FROM") || "CMDA Conference <conference@dnconference.cmdanigeria.net>";
+    const resendFrom = Deno.env.get("RESEND_FROM")
+      || Deno.env.get("EMAIL_FROM")
+      || "CMDA Nigeria <conference@dnconference.cmdanigeria.net>";
 
     const qrCodeData = JSON.stringify({
       registrationId: reg.id,
@@ -194,7 +198,6 @@ Deno.serve(async (req) => {
     }
 
     const message = {
-      from: fromEmail,
       to: reg.email,
       subject: "CMDA Conference 2026 - Registration Confirmed",
       text: textContent,
@@ -217,7 +220,7 @@ Deno.serve(async (req) => {
             "Content-Type": "application/json",
             "User-Agent": "CMDA-Conference/1.0",
           },
-          body: JSON.stringify({ ...message, to: [message.to] }),
+          body: JSON.stringify({ ...message, from: resendFrom, to: [message.to] }),
         });
         const result = await response.json();
         if (!response.ok) {
