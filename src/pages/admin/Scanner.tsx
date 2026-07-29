@@ -22,6 +22,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { adminApi } from '@/services/admin';
 import type { CheckInResult, ParticipationCheckIn } from '@/services/admin';
+import { scannerApi } from '@/services/scanner';
 import {
   formatAdminCategory,
   formatAdminDateTime,
@@ -29,6 +30,11 @@ import {
 } from '@/lib/admin-format';
 
 type ScanSource = 'qr' | 'image_upload' | 'manual';
+
+interface ScannerProps {
+  accessMode?: boolean;
+  onSessionInvalid?: () => void;
+}
 
 interface ScanResult {
   registrationId: string;
@@ -45,7 +51,7 @@ const CHECK_IN_PAGE_SIZE = 25;
 const SAME_CODE_COOLDOWN_MS = 5000;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-const Scanner = () => {
+const Scanner = ({ accessMode = false, onSessionInvalid }: ScannerProps) => {
   const [scanning, setScanning] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
@@ -68,15 +74,21 @@ const Scanner = () => {
   const loadCheckIns = useCallback(async (page: number) => {
     setLoadingCheckIns(true);
     try {
-      const response = await adminApi.getParticipationCheckIns(page, CHECK_IN_PAGE_SIZE);
+      const response = accessMode
+        ? await scannerApi.getParticipationCheckIns(page, CHECK_IN_PAGE_SIZE)
+        : await adminApi.getParticipationCheckIns(page, CHECK_IN_PAGE_SIZE);
       setCheckIns(response.data);
       setCheckInTotal(response.total);
     } catch (loadError) {
       console.error('Failed to load participation records:', loadError);
+      const message = String((loadError as { message?: string })?.message || '');
+      if (accessMode && /scanner (session|access)/i.test(message)) {
+        onSessionInvalid?.();
+      }
     } finally {
       setLoadingCheckIns(false);
     }
-  }, []);
+  }, [accessMode, onSessionInvalid]);
 
   useEffect(() => {
     codeReader.current = new BrowserMultiFormatReader();
@@ -164,7 +176,9 @@ const Scanner = () => {
     setError(null);
 
     try {
-      const checkIn = await adminApi.verifyAttendance(registrationId, scanSource);
+      const checkIn = accessMode
+        ? await scannerApi.verifyAttendance(registrationId, scanSource)
+        : await adminApi.verifyAttendance(registrationId, scanSource);
       showCheckInResult(registrationId, scanSource, checkIn);
       void playFeedback(checkIn.alreadyCheckedIn ? 'duplicate' : 'success');
       setCheckInPage(1);
@@ -172,6 +186,9 @@ const Scanner = () => {
       return true;
     } catch (checkInError: any) {
       const message = String(checkInError?.message || 'Check-in failed');
+      if (accessMode && /scanner (session|access)/i.test(message)) {
+        onSessionInvalid?.();
+      }
       setResult(null);
       setError(
         message.includes('Only paid registrations')
@@ -183,7 +200,7 @@ const Scanner = () => {
     } finally {
       setProcessing(false);
     }
-  }, [loadCheckIns, playFeedback]);
+  }, [accessMode, loadCheckIns, onSessionInvalid, playFeedback]);
 
   const processScanText = useCallback(async (rawText: string, scanSource: ScanSource) => {
     try {
@@ -564,7 +581,9 @@ const Scanner = () => {
                       <div>
                         <dt className="text-xs text-slate-500">Scanner</dt>
                         <dd className="break-all text-slate-700">
-                          {checkIn.scannerEmail || (checkIn.scanSource === 'legacy' ? 'Previous record' : 'Unknown')}
+                          {checkIn.scannerName
+                            || checkIn.scannerEmail
+                            || (checkIn.scanSource === 'legacy' ? 'Previous record' : 'Unknown')}
                         </dd>
                       </div>
                     </dl>
@@ -600,7 +619,9 @@ const Scanner = () => {
                           {formatAdminDateTime(checkIn.scannedAt)}
                         </td>
                         <td className="px-4 py-2.5 text-slate-600">
-                          {checkIn.scannerEmail || (checkIn.scanSource === 'legacy' ? 'Previous record' : 'Unknown')}
+                          {checkIn.scannerName
+                            || checkIn.scannerEmail
+                            || (checkIn.scanSource === 'legacy' ? 'Previous record' : 'Unknown')}
                         </td>
                       </tr>
                     ))}

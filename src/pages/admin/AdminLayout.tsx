@@ -12,7 +12,8 @@ import {
   ClipboardList,
   Heart,
   ShieldCheck,
-  Send
+  Send,
+  KeyRound
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { authApi } from '@/services/admin';
@@ -42,6 +43,7 @@ const AdminLayout = () => {
     { name: 'Email Logs', href: '/admin/email-logs', icon: Mail },
     { name: 'Send Emails', href: '/admin/email-utility', icon: Send },
     { name: 'Scanner', href: '/admin/scanner', icon: QrCode },
+    { name: 'Scanner Access', href: '/admin/scanner-access', icon: KeyRound },
     { name: 'Payment Audit', href: '/admin/payment-audit', icon: ShieldCheck },
     { name: 'Settings', href: '/admin/settings', icon: SettingsIcon },
   ];
@@ -53,7 +55,7 @@ const AdminLayout = () => {
     if (path === '/admin') {
       return location.pathname === path;
     }
-    return location.pathname.startsWith(path);
+    return location.pathname === path || location.pathname.startsWith(`${path}/`);
   };
 
   const handleLogout = async () => {

@@ -13,6 +13,7 @@ export interface ParticipationCheckIn {
   registrationId: string;
   scannedAt: string;
   scannerEmail: string | null;
+  scannerName: string | null;
   scanSource: 'qr' | 'image_upload' | 'manual' | 'legacy';
   participant: {
     firstName: string;
@@ -290,6 +291,7 @@ export const adminApi = {
         registration_id,
         scanned_at,
         scanner_email,
+        scanner_name,
         scan_source,
         registrations!inner (
           firstName,
@@ -309,6 +311,7 @@ export const adminApi = {
       registrationId: row.registration_id,
       scannedAt: row.scanned_at,
       scannerEmail: row.scanner_email,
+      scannerName: row.scanner_name,
       scanSource: row.scan_source,
       participant: Array.isArray(row.registrations)
         ? row.registrations[0]

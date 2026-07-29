@@ -18,8 +18,11 @@ import RegistrationTracking from "./pages/admin/RegistrationTracking";
 import EmailLogs from "./pages/admin/EmailLogs";
 import EmailUtility from "./pages/admin/EmailUtility";
 import Scanner from "./pages/admin/Scanner";
+import ScannerAccess from "./pages/admin/ScannerAccess";
 import Settings from "./pages/admin/Settings";
 import PaymentAudit from "./pages/admin/PaymentAudit";
+import ScannerLogin from "./pages/scanner/ScannerLogin";
+import ScannerPortal from "./pages/scanner/ScannerPortal";
 
 const queryClient = new QueryClient();
 
@@ -40,6 +43,10 @@ const App = () => (
           
           {/* Admin Login */}
           <Route path="/admin/login" element={<AdminLogin />} />
+
+          {/* Scanner-only access */}
+          <Route path="/scanner/login" element={<ScannerLogin />} />
+          <Route path="/scanner" element={<ScannerPortal />} />
           
           {/* Admin Routes */}
           <Route path="/admin" element={<AdminLayout />}>
@@ -50,6 +57,7 @@ const App = () => (
             <Route path="email-logs" element={<EmailLogs />} />
             <Route path="email-utility" element={<EmailUtility />} />
             <Route path="scanner" element={<Scanner />} />
+            <Route path="scanner-access" element={<ScannerAccess />} />
             <Route path="payment-audit" element={<PaymentAudit />} />
             <Route path="settings" element={<Settings />} />
           </Route>
