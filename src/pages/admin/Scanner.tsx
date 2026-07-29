@@ -12,6 +12,7 @@ import {
   RefreshCw,
   Upload,
   Users,
+  X,
   XCircle,
   Zap,
 } from 'lucide-react';
@@ -55,6 +56,7 @@ const Scanner = ({ accessMode = false, onSessionInvalid }: ScannerProps) => {
   const [scanning, setScanning] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
+  const [popupResult, setPopupResult] = useState<ScanResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [checkIns, setCheckIns] = useState<ParticipationCheckIn[]>([]);
   const [checkInTotal, setCheckInTotal] = useState(0);
@@ -102,6 +104,12 @@ const Scanner = ({ accessMode = false, onSessionInvalid }: ScannerProps) => {
   useEffect(() => {
     void loadCheckIns(checkInPage);
   }, [checkInPage, loadCheckIns]);
+
+  useEffect(() => {
+    if (!popupResult) return;
+    const timeout = window.setTimeout(() => setPopupResult(null), 5000);
+    return () => window.clearTimeout(timeout);
+  }, [popupResult]);
 
   const playFeedback = useCallback(async (kind: 'success' | 'duplicate' | 'error') => {
     if ('vibrate' in navigator) {
@@ -156,7 +164,7 @@ const Scanner = ({ accessMode = false, onSessionInvalid }: ScannerProps) => {
     scanSource: ScanSource,
     checkIn: CheckInResult,
   ) => {
-    setResult({
+    const nextResult = {
       registrationId,
       email: checkIn.email,
       name: `${checkIn.firstName} ${checkIn.surname}`,
@@ -165,7 +173,9 @@ const Scanner = ({ accessMode = false, onSessionInvalid }: ScannerProps) => {
       checkedInAt: checkIn.scannedAt,
       alreadyCheckedIn: checkIn.alreadyCheckedIn,
       scanSource,
-    });
+    };
+    setResult(nextResult);
+    setPopupResult(nextResult);
   };
 
   const checkInRegistration = useCallback(async (
@@ -343,6 +353,62 @@ const Scanner = ({ accessMode = false, onSessionInvalid }: ScannerProps) => {
 
   return (
     <div className="min-w-0 space-y-5">
+      {popupResult ? (
+        <div
+          data-testid="check-in-popup"
+          role="status"
+          aria-live="assertive"
+          aria-atomic="true"
+          className={`fixed inset-x-3 top-3 z-50 overflow-hidden rounded-xl border shadow-2xl sm:left-auto sm:right-5 sm:w-[420px] ${
+            popupResult.alreadyCheckedIn
+              ? 'border-amber-300 bg-amber-50'
+              : 'border-emerald-300 bg-emerald-50'
+          }`}
+        >
+          <div className="flex items-start gap-3 p-4">
+            <CheckCircle
+              className={`mt-0.5 h-9 w-9 shrink-0 ${
+                popupResult.alreadyCheckedIn ? 'text-amber-600' : 'text-emerald-600'
+              }`}
+            />
+            <div className="min-w-0 flex-1">
+              <p className={`font-bold ${
+                popupResult.alreadyCheckedIn ? 'text-amber-900' : 'text-emerald-900'
+              }`}>
+                {popupResult.alreadyCheckedIn ? 'Already checked in' : 'Check-in successful'}
+              </p>
+              <p className="mt-0.5 break-words text-base font-semibold text-slate-900">
+                {popupResult.name}
+              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <Badge variant="outline" className="bg-white/70">
+                  {formatAdminCategory(popupResult.category)}
+                </Badge>
+                <span className="text-xs text-slate-600">
+                  {formatAdminDateTime(popupResult.checkedInAt)}
+                </span>
+              </div>
+              <p className="mt-2 text-xs font-medium text-slate-600">
+                Scanner is ready for the next participant.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setPopupResult(null)}
+              className="rounded-md p-1 text-slate-500 hover:bg-black/5 hover:text-slate-800"
+              aria-label="Dismiss check-in popup"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          <div
+            className={`h-1 w-full ${
+              popupResult.alreadyCheckedIn ? 'bg-amber-500' : 'bg-emerald-500'
+            }`}
+          />
+        </div>
+      ) : null}
+
       <div>
         <h1 className="text-2xl font-bold text-slate-900">QR Scanner</h1>
         <p className="mt-1 text-sm text-slate-500">
