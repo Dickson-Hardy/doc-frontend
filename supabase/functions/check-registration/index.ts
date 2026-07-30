@@ -47,21 +47,32 @@ Deno.serve(async (req) => {
 
     // Late fee based on CURRENT date — flat ₦10,000 if paying after deadline
     // Use the stored baseFee, only add late fee if not already applied
-    const baseFee = data.baseFee || CATEGORY_FEES[data.category] || 0;
-    const isLate = new Date() > DEADLINE;
-    const isVirtual = data.category?.startsWith('virtual-');
-    const lateFee = (isLate && !isVirtual && !data.lateFee) ? 10000 : (isVirtual ? 0 : (data.lateFee || 0));
-    const correctTotal = baseFee + lateFee;
+    // A completed payment is an immutable financial record. Never reprice it
+    // when someone later looks up or resumes the registration.
+    if (data.paymentStatus !== "paid") {
+      const baseFee = data.baseFee || CATEGORY_FEES[data.category] || 0;
+      const isLate = new Date() > DEADLINE;
+      const isVirtual = data.category?.startsWith("virtual-");
+      const lateFee = (isLate && !isVirtual && !data.lateFee)
+        ? 10000
+        : (isVirtual ? 0 : (data.lateFee || 0));
+      const correctTotal = baseFee + lateFee;
 
-    // Update if amounts are stale
-    if (correctTotal !== data.totalAmount || baseFee !== data.baseFee || lateFee !== data.lateFee) {
-      await supabase
-        .from("registrations")
-        .update({ baseFee, lateFee, totalAmount: correctTotal })
-        .eq("id", data.id);
-      data.totalAmount = correctTotal;
-      data.baseFee = baseFee;
-      data.lateFee = lateFee;
+      if (correctTotal !== data.totalAmount || baseFee !== data.baseFee || lateFee !== data.lateFee) {
+        const { data: updated } = await supabase
+          .from("registrations")
+          .update({ baseFee, lateFee, totalAmount: correctTotal })
+          .eq("id", data.id)
+          .neq("paymentStatus", "paid")
+          .select("id")
+          .maybeSingle();
+
+        if (updated) {
+          data.totalAmount = correctTotal;
+          data.baseFee = baseFee;
+          data.lateFee = lateFee;
+        }
+      }
     }
 
     return new Response(

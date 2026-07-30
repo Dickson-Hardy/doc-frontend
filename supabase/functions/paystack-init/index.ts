@@ -109,11 +109,31 @@ Deno.serve(async (req) => {
         const verifyData = await verifyRes.json();
 
         if (verifyData.status && verifyData.data?.status === "success") {
-          // Already paid! Update DB
+          const transactionAmount = Number(verifyData.data.amount);
+          const expectedAmount = Number(total) * 100;
+          const transactionEmail = verifyData.data.customer?.email;
+          const emailMatches = typeof transactionEmail !== "string"
+            || transactionEmail.toLowerCase() === String(email).toLowerCase();
+
+          if (
+            verifyData.data.currency !== "NGN"
+            || transactionAmount !== expectedAmount
+            || !emailMatches
+          ) {
+            return new Response(JSON.stringify({
+              error: "Existing Paystack transaction does not match this registration amount or email",
+            }), {
+              status: 400,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
+          // Already paid and validated against amount, currency, and email.
           await supabase
             .from("registrations")
             .update({ paymentStatus: "paid", paidAt: new Date().toISOString() })
-            .eq("id", registration.id);
+            .eq("id", registration.id)
+            .neq("paymentStatus", "paid");
 
           return new Response(JSON.stringify({
             status: true,
