@@ -11,6 +11,7 @@ export interface AdminUser {
 export interface ParticipationCheckIn {
   id: string;
   registrationId: string;
+  attendeeType: 'primary' | 'spouse';
   scannedAt: string;
   scannerEmail: string | null;
   scannerName: string | null;
@@ -33,6 +34,7 @@ export interface CheckInResult {
   email: string;
   category: string;
   paymentStatus: string;
+  attendeeType: 'primary' | 'spouse';
 }
 
 export interface ManualPaymentConfirmation {
@@ -260,10 +262,12 @@ export const adminApi = {
   verifyAttendance: async (
     registrationId: string,
     scanSource: 'qr' | 'image_upload' | 'manual' = 'qr',
+    attendeeType?: 'primary' | 'spouse',
   ): Promise<CheckInResult> => {
     const { data, error } = await supabase.rpc('check_in_registration', {
       p_registration_id: registrationId,
       p_scan_source: scanSource,
+      p_attendee_type: attendeeType ?? 'select',
     });
 
     if (error) throw error;
@@ -279,6 +283,7 @@ export const adminApi = {
       email: checkIn.email,
       category: checkIn.category,
       paymentStatus: checkIn.payment_status,
+      attendeeType: checkIn.attendee_type,
     };
   },
 
@@ -289,6 +294,7 @@ export const adminApi = {
       .select(`
         id,
         registration_id,
+        attendee_type,
         scanned_at,
         scanner_email,
         scanner_name,
@@ -298,7 +304,10 @@ export const adminApi = {
           surname,
           email,
           category,
-          paymentStatus
+          paymentStatus,
+          spouseFirstName,
+          spouseSurname,
+          spouseEmail
         )
       `, { count: 'exact' })
       .order('scanned_at', { ascending: false })
@@ -309,13 +318,23 @@ export const adminApi = {
     const checkIns: ParticipationCheckIn[] = (data || []).map((row: any) => ({
       id: row.id,
       registrationId: row.registration_id,
+      attendeeType: row.attendee_type,
       scannedAt: row.scanned_at,
       scannerEmail: row.scanner_email,
       scannerName: row.scanner_name,
       scanSource: row.scan_source,
-      participant: Array.isArray(row.registrations)
-        ? row.registrations[0]
-        : row.registrations,
+      participant: (() => {
+        const registration = Array.isArray(row.registrations)
+          ? row.registrations[0]
+          : row.registrations;
+        if (row.attendee_type !== 'spouse') return registration;
+        return {
+          ...registration,
+          firstName: registration.spouseFirstName,
+          surname: registration.spouseSurname,
+          email: registration.spouseEmail,
+        };
+      })(),
     }));
 
     return { data: checkIns, total: count || 0 };

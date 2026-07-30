@@ -28,6 +28,7 @@ export interface ScannerAccessRecord {
 interface ScannerCheckInRpcRow {
   id: string;
   registration_id: string;
+  attendee_type: 'primary' | 'spouse';
   scanned_at: string;
   scanner_email: string | null;
   scanner_name: string | null;
@@ -129,6 +130,7 @@ export const scannerApi = {
   verifyAttendance: async (
     registrationId: string,
     scanSource: 'qr' | 'image_upload' | 'manual' = 'qr',
+    attendeeType?: 'primary' | 'spouse',
   ): Promise<CheckInResult> => {
     const session = requireLocalSession();
     const { data, error } = await supabase.rpc('check_in_registration_with_scanner_session', {
@@ -136,6 +138,7 @@ export const scannerApi = {
       p_device_id: getDeviceId(),
       p_registration_id: registrationId,
       p_scan_source: scanSource,
+      p_attendee_type: attendeeType ?? 'select',
     });
     if (error) throw error;
     const checkIn = data?.[0];
@@ -150,6 +153,7 @@ export const scannerApi = {
       email: checkIn.email,
       category: checkIn.category,
       paymentStatus: checkIn.payment_status,
+      attendeeType: checkIn.attendee_type,
     };
   },
 
@@ -167,6 +171,7 @@ export const scannerApi = {
     const checkIns: ParticipationCheckIn[] = (rows as ScannerCheckInRpcRow[]).map((row) => ({
       id: row.id,
       registrationId: row.registration_id,
+      attendeeType: row.attendee_type,
       scannedAt: row.scanned_at,
       scannerEmail: row.scanner_email,
       scannerName: row.scanner_name,

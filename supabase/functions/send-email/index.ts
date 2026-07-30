@@ -3,14 +3,33 @@ import nodemailer from "npm:nodemailer@7";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-email-utility-token",
 };
 
 interface EmailMessage {
   to: string;
+  replyTo: string;
   subject: string;
   text: string;
   html: string;
+  attachments?: Array<{
+    filename: string;
+    content: Uint8Array;
+    contentType: string;
+    cid: string;
+  }>;
+}
+
+let smtpTransporter: ReturnType<typeof nodemailer.createTransport> | undefined;
+let smtpTransporterKey = "";
+
+function bytesToBase64(bytes: Uint8Array) {
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+  }
+  return btoa(binary);
 }
 
 async function sendWithSmtp(message: EmailMessage) {
@@ -21,17 +40,26 @@ async function sendWithSmtp(message: EmailMessage) {
 
   if (!user || !password) throw new Error("Gmail SMTP credentials are not configured");
 
-  const transporter = nodemailer.createTransport({
-    host,
-    port,
-    secure: port === 465,
-    requireTLS: port !== 465,
-    auth: { user, pass: password },
-    tls: { minVersion: "TLSv1.2" },
-  });
+  const transporterKey = `${host}:${port}:${user}`;
+  if (!smtpTransporter || smtpTransporterKey !== transporterKey) {
+    smtpTransporter = nodemailer.createTransport({
+      host,
+      port,
+      secure: port === 465,
+      requireTLS: port !== 465,
+      pool: true,
+      maxConnections: 1,
+      maxMessages: 100,
+      rateDelta: 1_000,
+      rateLimit: 4,
+      auth: { user, pass: password },
+      tls: { minVersion: "TLSv1.2" },
+    });
+    smtpTransporterKey = transporterKey;
+  }
 
   const from = Deno.env.get("SMTP_FROM") || `CMDA Nigeria <${user}>`;
-  return transporter.sendMail({ ...message, from });
+  return smtpTransporter.sendMail({ ...message, from });
 }
 
 Deno.serve(async (req) => {
@@ -40,15 +68,42 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { registrationId, source: requestedSource } = await req.json();
+    const {
+      registrationId,
+      source: requestedSource,
+      attendeeType: requestedAttendeeType,
+    } = await req.json();
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
     const callerToken = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
-    const source = requestedSource === "utility"
-      && callerToken === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
+    const suppliedUtilityToken = req.headers.get("x-email-utility-token") ?? "";
+    const configuredUtilityToken = Deno.env.get("EMAIL_UTILITY_TOKEN") ?? "";
+    const trustedUtilityRequest = callerToken === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
+      || (
+        configuredUtilityToken.length >= 32
+        && suppliedUtilityToken === configuredUtilityToken
+      );
+    let trustedAdminRequest = false;
+    if (!trustedUtilityRequest && callerToken) {
+      const { data: authData } = await supabase.auth.getUser(callerToken);
+      const userEmail = authData.user?.email;
+      if (userEmail) {
+        const { data: adminUser } = await supabase
+          .from("admin_users")
+          .select("id")
+          .ilike("email", userEmail)
+          .eq("isActive", true)
+          .eq("role", "super_admin")
+          .limit(1)
+          .maybeSingle();
+        trustedAdminRequest = Boolean(adminUser);
+      }
+    }
+    const source = trustedAdminRequest
+      || (requestedSource === "utility" && trustedUtilityRequest)
       ? "utility"
       : "system";
 
@@ -60,14 +115,49 @@ Deno.serve(async (req) => {
 
     if (fetchError || !reg) throw new Error("Registration not found");
 
+    const attendeeType = requestedAttendeeType === "spouse" ? "spouse" : "primary";
+    const isSpousePass = attendeeType === "spouse";
+    if (
+      requestedAttendeeType !== undefined
+      && requestedAttendeeType !== "primary"
+      && requestedAttendeeType !== "spouse"
+    ) {
+      throw new Error("Invalid attendee type");
+    }
+    if (isSpousePass && reg.category !== "doctor-with-spouse") {
+      throw new Error("This registration does not include a spouse");
+    }
+    if (
+      isSpousePass
+      && (
+        !reg.spouseFirstName?.trim()
+        || !reg.spouseSurname?.trim()
+        || !reg.spouseEmail?.trim()
+      )
+    ) {
+      throw new Error("Spouse details are incomplete");
+    }
+    if (isSpousePass && reg.paymentStatus !== "paid") {
+      throw new Error("Only paid spouse registrations can receive a pass");
+    }
+
+    const participantFirstName = isSpousePass ? reg.spouseFirstName : reg.firstName;
+    const participantSurname = isSpousePass ? reg.spouseSurname : reg.surname;
+    const participantEmail = isSpousePass ? reg.spouseEmail : reg.email;
+    const passFilename = isSpousePass ? "spouse-conference-pass.png" : "conference-pass.png";
+    const emailSubject = isSpousePass
+      ? "CMDA Conference 2026 - Your Spouse Conference Pass"
+      : "CMDA Conference 2026 - Registration Confirmed";
+
     const resendFrom = Deno.env.get("RESEND_FROM")
       || Deno.env.get("EMAIL_FROM")
       || "CMDA Nigeria <conference@dnconference.cmdanigeria.net>";
 
     const qrCodeData = JSON.stringify({
       registrationId: reg.id,
-      email: reg.email,
-      name: `${reg.firstName} ${reg.surname}`,
+      attendeeType,
+      email: participantEmail,
+      name: `${participantFirstName} ${participantSurname}`,
       verified: false,
     });
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrCodeData)}`;
@@ -83,6 +173,15 @@ Deno.serve(async (req) => {
     };
 
     const isVirtual = reg.category?.startsWith('virtual-');
+    const qrContentId = `${attendeeType}-conference-pass-${reg.id}`;
+    let qrCodeContent: Uint8Array | undefined;
+    if (!isVirtual) {
+      const qrResponse = await fetch(qrCodeUrl);
+      if (!qrResponse.ok) {
+        throw new Error(`Could not generate conference QR code: ${qrResponse.status}`);
+      }
+      qrCodeContent = new Uint8Array(await qrResponse.arrayBuffer());
+    }
 
     const htmlContent = `
 <!DOCTYPE html>
@@ -104,12 +203,15 @@ Deno.serve(async (req) => {
 <body>
   <div class="container">
     <div class="header">
-      <h1>🎉 Registration Confirmed!</h1>
+      <h1>Registration Confirmed</h1>
       <p>CMDA National Conference 2026</p>
     </div>
     <div class="content">
-      <h2>Dear ${reg.firstName} ${reg.surname},</h2>
-      <p>Thank you for registering for the CMDA National Conference 2026. Your payment has been successfully processed.</p>
+      <h2>Dear ${participantFirstName} ${participantSurname},</h2>
+      <p>${isSpousePass
+        ? `Your participation under ${reg.firstName} ${reg.surname}'s Doctor with Spouse booking is confirmed.`
+        : 'Thank you for registering for the CMDA National Conference 2026. Your payment has been successfully processed.'
+      }</p>
       
       <div class="details">
         <div class="detail-row">
@@ -118,7 +220,7 @@ Deno.serve(async (req) => {
         </div>
         <div class="detail-row">
           <span class="detail-label">Category:</span>
-          <span>${categoryLabels[reg.category] || reg.category}</span>
+          <span>${isSpousePass ? 'Spouse - Doctor with Spouse' : categoryLabels[reg.category] || reg.category}</span>
         </div>
         <div class="detail-row">
           <span class="detail-label">Amount Paid:</span>
@@ -132,13 +234,13 @@ Deno.serve(async (req) => {
 
       ${isVirtual ? `
       <div class="qr-section" style="background: #e8f5e9; border: 2px solid #4caf50;">
-        <h3 style="color: #2e7d32;">🖥️ Virtual Participation</h3>
+        <h3 style="color: #2e7d32;">Virtual Participation</h3>
         <p>You will receive a meeting link via email before the conference begins.</p>
         <p style="margin-top: 15px; color: #666;">Please keep this email for your records.</p>
       </div>
 
       <div class="important">
-        <strong>⚠️ Important:</strong>
+        <strong>Important:</strong>
         <ul>
           <li>A meeting link will be sent to you before the event</li>
           <li>Ensure your email address is correct</li>
@@ -149,11 +251,14 @@ Deno.serve(async (req) => {
       <div class="qr-section">
         <h3>Your Conference Pass</h3>
         <p>Please present this QR code at the conference venue for check-in:</p>
-        <img src="${qrCodeUrl}" alt="Conference Pass QR Code" style="max-width: 300px; margin: 20px auto;" />
+        <img src="cid:${qrContentId}" alt="Conference Pass QR Code" style="display: block; width: 300px; max-width: 100%; height: auto; margin: 20px auto;" />
+        <p style="font-size: 13px;">
+          Your conference pass is also attached as <strong>${passFilename}</strong>.
+        </p>
       </div>
 
       <div class="important">
-        <strong>⚠️ Important:</strong>
+        <strong>Important:</strong>
         <ul>
           <li>Save this email or take a screenshot of the QR code</li>
           <li>Present the QR code at registration desk on arrival</li>
@@ -167,30 +272,36 @@ Deno.serve(async (req) => {
     </div>
     <div class="footer">
       <p>© 2026 Christian Medical & Dental Association of Nigeria</p>
-      <p>This is an automated email. Please do not reply.</p>
+      <p>Replies are monitored at conference@cmdanigeria.org.</p>
     </div>
   </div>
 </body>
 </html>`;
 
     const textContent = `CMDA National Conference 2026\n\n` +
-      `Dear ${reg.firstName} ${reg.surname},\n\n` +
-      `Your registration is confirmed.\n` +
+      `Dear ${participantFirstName} ${participantSurname},\n\n` +
+      (isSpousePass
+        ? `Your participation under ${reg.firstName} ${reg.surname}'s Doctor with Spouse booking is confirmed.\n`
+        : `Your registration is confirmed.\n`) +
       `Registration ID: ${reg.id}\n` +
-      `Category: ${categoryLabels[reg.category] || reg.category}\n` +
+      `Category: ${isSpousePass ? 'Spouse - Doctor with Spouse' : categoryLabels[reg.category] || reg.category}\n` +
       `Amount Paid: ₦${reg.totalAmount?.toLocaleString()}\n` +
       `Payment Reference: ${reg.paymentReference}\n\n` +
       (isVirtual ?
         `You are registered for virtual participation.\nA meeting link will be sent to you before the event.\n` :
-        `Your QR code: ${qrCodeUrl}\nPlease present it at check-in.\n`
+        `Your QR conference pass is attached as ${passFilename}.\nPlease present it at check-in.\n`
       );
 
     let provider = "resend";
     if (source === "utility") {
-      const { data: reservedProvider, error: reservationError } = await supabase
-        .rpc("reserve_confirmation_email_provider", { p_source: source });
-      if (reservationError) throw reservationError;
-      provider = reservedProvider;
+      if (Deno.env.get("EMAIL_UTILITY_FORCE_SMTP") === "true") {
+        provider = "smtp";
+      } else {
+        const { data: reservedProvider, error: reservationError } = await supabase
+          .rpc("reserve_confirmation_email_provider", { p_source: source });
+        if (reservationError) throw reservationError;
+        provider = reservedProvider;
+      }
     }
 
     if (provider === "limit_reached") {
@@ -198,10 +309,19 @@ Deno.serve(async (req) => {
     }
 
     const message = {
-      to: reg.email,
-      subject: "CMDA Conference 2026 - Registration Confirmed",
+      to: participantEmail,
+      replyTo: "conference@cmdanigeria.org",
+      subject: emailSubject,
       text: textContent,
       html: htmlContent,
+      attachments: qrCodeContent
+        ? [{
+          filename: passFilename,
+          content: qrCodeContent,
+          contentType: "image/png",
+          cid: qrContentId,
+        }]
+        : undefined,
     };
 
     let messageId: string | undefined;
@@ -220,7 +340,20 @@ Deno.serve(async (req) => {
             "Content-Type": "application/json",
             "User-Agent": "CMDA-Conference/1.0",
           },
-          body: JSON.stringify({ ...message, from: resendFrom, to: [message.to] }),
+          body: JSON.stringify({
+            from: resendFrom,
+            to: [message.to],
+            reply_to: message.replyTo,
+            subject: message.subject,
+            text: message.text,
+            html: message.html,
+            attachments: message.attachments?.map((attachment) => ({
+              filename: attachment.filename,
+              content: bytesToBase64(attachment.content),
+              content_type: attachment.contentType,
+              content_id: attachment.cid,
+            })),
+          }),
         });
         const result = await response.json();
         if (!response.ok) {
@@ -240,11 +373,12 @@ Deno.serve(async (req) => {
         ? deliveryError.message
         : "Email delivery failed";
       await supabase.from("email_logs").insert({
-        recipientEmail: reg.email,
-        subject: "Registration Confirmed - CMDA Conference 2026",
+        recipientEmail: participantEmail,
+        subject: emailSubject,
         status: "failed",
         errorMessage,
         registrationId: reg.id,
+        attendeeType,
         source,
         provider,
       });
@@ -252,16 +386,17 @@ Deno.serve(async (req) => {
     }
 
     await supabase.from("email_logs").insert({
-      recipientEmail: reg.email,
-      subject: "Registration Confirmed - CMDA Conference 2026",
+      recipientEmail: participantEmail,
+      subject: emailSubject,
       status: "sent",
       registrationId: reg.id,
+      attendeeType,
       source,
       provider,
     });
 
     return new Response(
-      JSON.stringify({ status: "sent", id: messageId, provider }),
+      JSON.stringify({ status: "sent", id: messageId, provider, attendeeType }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {

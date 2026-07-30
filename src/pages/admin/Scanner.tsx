@@ -21,6 +21,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { adminApi } from '@/services/admin';
 import type { CheckInResult, ParticipationCheckIn } from '@/services/admin';
 import { scannerApi } from '@/services/scanner';
@@ -31,6 +38,7 @@ import {
 } from '@/lib/admin-format';
 
 type ScanSource = 'qr' | 'image_upload' | 'manual';
+type AttendeeType = 'primary' | 'spouse';
 
 interface ScannerProps {
   accessMode?: boolean;
@@ -45,6 +53,12 @@ interface ScanResult {
   paymentStatus: string;
   checkedInAt: string;
   alreadyCheckedIn: boolean;
+  attendeeType: AttendeeType;
+  scanSource: ScanSource;
+}
+
+interface PendingAttendeeChoice {
+  registrationId: string;
   scanSource: ScanSource;
 }
 
@@ -63,6 +77,7 @@ const Scanner = ({ accessMode = false, onSessionInvalid }: ScannerProps) => {
   const [checkInPage, setCheckInPage] = useState(1);
   const [loadingCheckIns, setLoadingCheckIns] = useState(true);
   const [manualRegistrationId, setManualRegistrationId] = useState('');
+  const [pendingAttendeeChoice, setPendingAttendeeChoice] = useState<PendingAttendeeChoice | null>(null);
   const [torchAvailable, setTorchAvailable] = useState(false);
   const [torchOn, setTorchOn] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -146,15 +161,21 @@ const Scanner = ({ accessMode = false, onSessionInvalid }: ScannerProps) => {
     processingScan.current = false;
   }, []);
 
-  const extractRegistrationId = (rawText: string) => {
+  const extractRegistrationPass = (rawText: string): {
+    registrationId: string;
+    attendeeType?: AttendeeType;
+  } => {
     const trimmed = rawText.trim();
     try {
       const parsed = JSON.parse(trimmed);
       if (typeof parsed.registrationId === 'string' && UUID_PATTERN.test(parsed.registrationId)) {
-        return parsed.registrationId;
+        const attendeeType = parsed.attendeeType === 'primary' || parsed.attendeeType === 'spouse'
+          ? parsed.attendeeType
+          : undefined;
+        return { registrationId: parsed.registrationId, attendeeType };
       }
     } catch {
-      if (UUID_PATTERN.test(trimmed)) return trimmed;
+      if (UUID_PATTERN.test(trimmed)) return { registrationId: trimmed };
     }
     throw new Error('This is not a valid CMDA conference QR code.');
   };
@@ -172,6 +193,7 @@ const Scanner = ({ accessMode = false, onSessionInvalid }: ScannerProps) => {
       paymentStatus: checkIn.paymentStatus,
       checkedInAt: checkIn.scannedAt,
       alreadyCheckedIn: checkIn.alreadyCheckedIn,
+      attendeeType: checkIn.attendeeType,
       scanSource,
     };
     setResult(nextResult);
@@ -181,14 +203,15 @@ const Scanner = ({ accessMode = false, onSessionInvalid }: ScannerProps) => {
   const checkInRegistration = useCallback(async (
     registrationId: string,
     scanSource: ScanSource,
+    attendeeType?: AttendeeType,
   ) => {
     setProcessing(true);
     setError(null);
 
     try {
       const checkIn = accessMode
-        ? await scannerApi.verifyAttendance(registrationId, scanSource)
-        : await adminApi.verifyAttendance(registrationId, scanSource);
+        ? await scannerApi.verifyAttendance(registrationId, scanSource, attendeeType)
+        : await adminApi.verifyAttendance(registrationId, scanSource, attendeeType);
       showCheckInResult(registrationId, scanSource, checkIn);
       void playFeedback(checkIn.alreadyCheckedIn ? 'duplicate' : 'success');
       setCheckInPage(1);
@@ -198,6 +221,10 @@ const Scanner = ({ accessMode = false, onSessionInvalid }: ScannerProps) => {
       const message = String(checkInError?.message || 'Check-in failed');
       if (accessMode && /scanner (session|access)/i.test(message)) {
         onSessionInvalid?.();
+      }
+      if (/Attendee choice required/i.test(message)) {
+        setPendingAttendeeChoice({ registrationId, scanSource });
+        return false;
       }
       setResult(null);
       setError(
@@ -214,14 +241,21 @@ const Scanner = ({ accessMode = false, onSessionInvalid }: ScannerProps) => {
 
   const processScanText = useCallback(async (rawText: string, scanSource: ScanSource) => {
     try {
-      const registrationId = extractRegistrationId(rawText);
-      await checkInRegistration(registrationId, scanSource);
+      const pass = extractRegistrationPass(rawText);
+      await checkInRegistration(pass.registrationId, scanSource, pass.attendeeType);
     } catch (scanError: any) {
       setResult(null);
       setError(scanError?.message || 'Invalid QR code');
       void playFeedback('error');
     }
   }, [checkInRegistration, playFeedback]);
+
+  const chooseAttendee = async (attendeeType: AttendeeType) => {
+    const choice = pendingAttendeeChoice;
+    if (!choice) return;
+    setPendingAttendeeChoice(null);
+    await checkInRegistration(choice.registrationId, choice.scanSource, attendeeType);
+  };
 
   const inspectTorchCapability = () => {
     const stream = videoRef.current?.srcObject;
@@ -353,6 +387,46 @@ const Scanner = ({ accessMode = false, onSessionInvalid }: ScannerProps) => {
 
   return (
     <div className="min-w-0 space-y-5">
+      <Dialog
+        open={Boolean(pendingAttendeeChoice)}
+        onOpenChange={(open) => {
+          if (!open && !processing) setPendingAttendeeChoice(null);
+        }}
+      >
+        <DialogContent
+          data-testid="attendee-choice-dialog"
+          className="w-[calc(100%-1.5rem)] max-w-md rounded-xl"
+        >
+          <DialogHeader>
+            <DialogTitle>Who is checking in?</DialogTitle>
+            <DialogDescription>
+              This booking includes a doctor and spouse. Select the person standing at the desk.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 pt-2 sm:grid-cols-2">
+            <Button
+              type="button"
+              className="h-auto min-h-20 flex-col gap-1 py-4 text-base"
+              disabled={processing}
+              onClick={() => void chooseAttendee('primary')}
+            >
+              <span>Check in Doctor</span>
+              <span className="text-xs font-normal opacity-80">Primary registrant</span>
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              className="h-auto min-h-20 flex-col gap-1 py-4 text-base"
+              disabled={processing}
+              onClick={() => void chooseAttendee('spouse')}
+            >
+              <span>Check in Spouse</span>
+              <span className="text-xs font-normal opacity-80">Linked participant</span>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {popupResult ? (
         <div
           data-testid="check-in-popup"
@@ -382,7 +456,9 @@ const Scanner = ({ accessMode = false, onSessionInvalid }: ScannerProps) => {
               </p>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <Badge variant="outline" className="bg-white/70">
-                  {formatAdminCategory(popupResult.category)}
+                  {popupResult.attendeeType === 'spouse'
+                    ? 'Spouse'
+                    : formatAdminCategory(popupResult.category)}
                 </Badge>
                 <span className="text-xs text-slate-600">
                   {formatAdminDateTime(popupResult.checkedInAt)}
@@ -561,6 +637,9 @@ const Scanner = ({ accessMode = false, onSessionInvalid }: ScannerProps) => {
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <Badge variant="outline">{formatAdminCategory(result.category)}</Badge>
+                      <Badge variant="outline">
+                        {result.attendeeType === 'spouse' ? 'Spouse' : 'Primary registrant'}
+                      </Badge>
                       <Badge>{result.paymentStatus}</Badge>
                     </div>
                     <div>
@@ -636,7 +715,9 @@ const Scanner = ({ accessMode = false, onSessionInvalid }: ScannerProps) => {
                         <p className="break-all text-xs text-slate-500">{checkIn.participant.email}</p>
                       </div>
                       <Badge variant="outline" className="shrink-0 font-normal">
-                        {formatAdminCategory(checkIn.participant.category)}
+                        {checkIn.attendeeType === 'spouse'
+                          ? 'Spouse'
+                          : formatAdminCategory(checkIn.participant.category)}
                       </Badge>
                     </div>
                     <dl className="mt-3 grid grid-cols-1 gap-2 text-sm">
@@ -678,7 +759,9 @@ const Scanner = ({ accessMode = false, onSessionInvalid }: ScannerProps) => {
                         </td>
                         <td className="px-4 py-2.5">
                           <Badge variant="outline" className="font-normal">
-                            {formatAdminCategory(checkIn.participant.category)}
+                            {checkIn.attendeeType === 'spouse'
+                              ? 'Spouse'
+                              : formatAdminCategory(checkIn.participant.category)}
                           </Badge>
                         </td>
                         <td className="whitespace-nowrap px-4 py-2.5 text-slate-600">
