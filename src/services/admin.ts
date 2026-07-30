@@ -25,6 +25,28 @@ export interface ParticipationCheckIn {
   };
 }
 
+interface ParticipationRegistrationRow {
+  firstName: string;
+  surname: string;
+  email: string;
+  category: string;
+  paymentStatus: string;
+  spouseFirstName: string | null;
+  spouseSurname: string | null;
+  spouseEmail: string | null;
+}
+
+interface ParticipationCheckInRow {
+  id: string;
+  registration_id: string;
+  attendee_type: 'primary' | 'spouse';
+  scanned_at: string;
+  scanner_email: string | null;
+  scanner_name: string | null;
+  scan_source: 'qr' | 'image_upload' | 'manual' | 'legacy';
+  registrations: ParticipationRegistrationRow | ParticipationRegistrationRow[];
+}
+
 export interface CheckInResult {
   checkInId: string;
   alreadyCheckedIn: boolean;
@@ -66,6 +88,70 @@ export interface BulkEmailResult {
     message?: string;
   }>;
 }
+
+const mapParticipationCheckIn = (row: ParticipationCheckInRow): ParticipationCheckIn => {
+  const registration = Array.isArray(row.registrations)
+    ? row.registrations[0]
+    : row.registrations;
+  const participant = row.attendee_type === 'spouse'
+    ? {
+        ...registration,
+        firstName: registration.spouseFirstName || '',
+        surname: registration.spouseSurname || '',
+        email: registration.spouseEmail || '',
+      }
+    : registration;
+
+  return {
+    id: row.id,
+    registrationId: row.registration_id,
+    attendeeType: row.attendee_type,
+    scannedAt: row.scanned_at,
+    scannerEmail: row.scanner_email,
+    scannerName: row.scanner_name,
+    scanSource: row.scan_source,
+    participant: {
+      firstName: participant.firstName,
+      surname: participant.surname,
+      email: participant.email,
+      category: participant.category,
+      paymentStatus: participant.paymentStatus,
+    },
+  };
+};
+
+const fetchParticipationCheckInsPage = async (page = 1, limit = 25) => {
+  const offset = Math.max(0, page - 1) * limit;
+  const { data, count, error } = await supabase
+    .from('participation_check_ins')
+    .select(`
+      id,
+      registration_id,
+      attendee_type,
+      scanned_at,
+      scanner_email,
+      scanner_name,
+      scan_source,
+      registrations!inner (
+        firstName,
+        surname,
+        email,
+        category,
+        paymentStatus,
+        spouseFirstName,
+        spouseSurname,
+        spouseEmail
+      )
+    `, { count: 'exact' })
+    .order('scanned_at', { ascending: false })
+    .range(offset, offset + Math.max(0, limit - 1));
+
+  if (error) throw error;
+  return {
+    data: ((data || []) as unknown as ParticipationCheckInRow[]).map(mapParticipationCheckIn),
+    total: count || 0,
+  };
+};
 
 export const authApi = {
   login: async (email: string, password: string) => {
@@ -287,57 +373,25 @@ export const adminApi = {
     };
   },
 
-  getParticipationCheckIns: async (page = 1, limit = 25) => {
-    const offset = Math.max(0, page - 1) * limit;
-    const { data, count, error } = await supabase
-      .from('participation_check_ins')
-      .select(`
-        id,
-        registration_id,
-        attendee_type,
-        scanned_at,
-        scanner_email,
-        scanner_name,
-        scan_source,
-        registrations!inner (
-          firstName,
-          surname,
-          email,
-          category,
-          paymentStatus,
-          spouseFirstName,
-          spouseSurname,
-          spouseEmail
-        )
-      `, { count: 'exact' })
-      .order('scanned_at', { ascending: false })
-      .range(offset, offset + Math.max(0, limit - 1));
+  getParticipationCheckIns: fetchParticipationCheckInsPage,
 
-    if (error) throw error;
+  getAllParticipationCheckIns: async () => {
+    const pageSize = 1000;
+    const firstPage = await fetchParticipationCheckInsPage(1, pageSize);
+    if (firstPage.data.length >= firstPage.total) return firstPage;
 
-    const checkIns: ParticipationCheckIn[] = (data || []).map((row: any) => ({
-      id: row.id,
-      registrationId: row.registration_id,
-      attendeeType: row.attendee_type,
-      scannedAt: row.scanned_at,
-      scannerEmail: row.scanner_email,
-      scannerName: row.scanner_name,
-      scanSource: row.scan_source,
-      participant: (() => {
-        const registration = Array.isArray(row.registrations)
-          ? row.registrations[0]
-          : row.registrations;
-        if (row.attendee_type !== 'spouse') return registration;
-        return {
-          ...registration,
-          firstName: registration.spouseFirstName,
-          surname: registration.spouseSurname,
-          email: registration.spouseEmail,
-        };
-      })(),
-    }));
+    const remainingPageCount = Math.ceil((firstPage.total - firstPage.data.length) / pageSize);
+    const remainingPages = await Promise.all(
+      Array.from(
+        { length: remainingPageCount },
+        (_, index) => fetchParticipationCheckInsPage(index + 2, pageSize),
+      ),
+    );
 
-    return { data: checkIns, total: count || 0 };
+    return {
+      data: [firstPage.data, ...remainingPages.map((page) => page.data)].flat(),
+      total: firstPage.total,
+    };
   },
 
   getPricingAudit: async () => {

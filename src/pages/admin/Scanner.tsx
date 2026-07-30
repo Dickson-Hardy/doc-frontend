@@ -1,15 +1,18 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BrowserMultiFormatReader } from '@zxing/library';
 import {
+  BarChart3,
   Camera,
   CheckCircle,
   ChevronLeft,
   ChevronRight,
+  Download,
   Flashlight,
   FlashlightOff,
   Keyboard,
   QrCode,
   RefreshCw,
+  Search,
   Upload,
   Users,
   X,
@@ -62,9 +65,66 @@ interface PendingAttendeeChoice {
   scanSource: ScanSource;
 }
 
+interface ParticipationFilters {
+  search: string;
+  category: string;
+  attendeeType: string;
+  scanSource: string;
+  scanner: string;
+  dateFrom: string;
+  dateTo: string;
+}
+
 const CHECK_IN_PAGE_SIZE = 25;
 const SAME_CODE_COOLDOWN_MS = 5000;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const EMPTY_PARTICIPATION_FILTERS: ParticipationFilters = {
+  search: '',
+  category: 'all',
+  attendeeType: 'all',
+  scanSource: 'all',
+  scanner: 'all',
+  dateFrom: '',
+  dateTo: '',
+};
+
+const formatAttendeeType = (attendeeType: ParticipationCheckIn['attendeeType']) => (
+  attendeeType === 'spouse' ? 'Spouse' : 'Primary registrant'
+);
+
+const formatScanSource = (source: ParticipationCheckIn['scanSource']) => {
+  const labels: Record<ParticipationCheckIn['scanSource'], string> = {
+    qr: 'Camera QR',
+    image_upload: 'QR image',
+    manual: 'Manual ID',
+    legacy: 'Previous record',
+  };
+  return labels[source];
+};
+
+const getScannerLabel = (checkIn: ParticipationCheckIn) => (
+  checkIn.scannerName
+  || checkIn.scannerEmail
+  || (checkIn.scanSource === 'legacy' ? 'Previous record' : 'Unknown')
+);
+
+const csvCell = (value: string | number) => {
+  const text = String(value);
+  const safeText = /^[=+\-@]/.test(text.trimStart()) ? `'${text}` : text;
+  return `"${safeText.replace(/"/g, '""')}"`;
+};
+
+const downloadCsv = (filename: string, rows: Array<Array<string | number>>) => {
+  const csv = `\uFEFF${rows.map((row) => row.map(csvCell).join(',')).join('\r\n')}`;
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
 
 const Scanner = ({ accessMode = false, onSessionInvalid }: ScannerProps) => {
   const [scanning, setScanning] = useState(false);
@@ -76,6 +136,10 @@ const Scanner = ({ accessMode = false, onSessionInvalid }: ScannerProps) => {
   const [checkInTotal, setCheckInTotal] = useState(0);
   const [checkInPage, setCheckInPage] = useState(1);
   const [loadingCheckIns, setLoadingCheckIns] = useState(true);
+  const [checkInLoadError, setCheckInLoadError] = useState<string | null>(null);
+  const [participationFilters, setParticipationFilters] = useState<ParticipationFilters>(
+    EMPTY_PARTICIPATION_FILTERS,
+  );
   const [manualRegistrationId, setManualRegistrationId] = useState('');
   const [pendingAttendeeChoice, setPendingAttendeeChoice] = useState<PendingAttendeeChoice | null>(null);
   const [torchAvailable, setTorchAvailable] = useState(false);
@@ -86,22 +150,37 @@ const Scanner = ({ accessMode = false, onSessionInvalid }: ScannerProps) => {
   const lastScan = useRef({ text: '', at: 0 });
   const audioContext = useRef<AudioContext | null>(null);
 
-  const totalCheckInPages = Math.max(1, Math.ceil(checkInTotal / CHECK_IN_PAGE_SIZE));
+  const updateParticipationFilter = (
+    key: keyof ParticipationFilters,
+    value: string,
+  ) => {
+    setParticipationFilters((current) => ({ ...current, [key]: value }));
+  };
 
   const loadCheckIns = useCallback(async (page: number) => {
     setLoadingCheckIns(true);
+    setCheckInLoadError(null);
     try {
       const response = accessMode
         ? await scannerApi.getParticipationCheckIns(page, CHECK_IN_PAGE_SIZE)
-        : await adminApi.getParticipationCheckIns(page, CHECK_IN_PAGE_SIZE);
+        : await adminApi.getAllParticipationCheckIns();
       setCheckIns(response.data);
       setCheckInTotal(response.total);
     } catch (loadError) {
-      console.error('Failed to load participation records:', loadError);
+      console.error(
+        'Failed to load participation records:',
+        JSON.stringify(loadError),
+        loadError,
+      );
       const message = String((loadError as { message?: string })?.message || '');
       if (accessMode && /scanner (session|access)/i.test(message)) {
         onSessionInvalid?.();
       }
+      setCheckInLoadError(
+        /permission denied|jwt|session/i.test(message)
+          ? 'Your admin session has expired. Sign in again to load participation records.'
+          : 'Participation records could not be loaded. Refresh and try again.',
+      );
     } finally {
       setLoadingCheckIns(false);
     }
@@ -117,14 +196,184 @@ const Scanner = ({ accessMode = false, onSessionInvalid }: ScannerProps) => {
   }, []);
 
   useEffect(() => {
-    void loadCheckIns(checkInPage);
-  }, [checkInPage, loadCheckIns]);
+    if (accessMode) void loadCheckIns(checkInPage);
+  }, [accessMode, checkInPage, loadCheckIns]);
+
+  useEffect(() => {
+    if (!accessMode) void loadCheckIns(1);
+  }, [accessMode, loadCheckIns]);
 
   useEffect(() => {
     if (!popupResult) return;
     const timeout = window.setTimeout(() => setPopupResult(null), 5000);
     return () => window.clearTimeout(timeout);
   }, [popupResult]);
+
+  const scannerOptions = useMemo(() => (
+    Array.from(new Set(checkIns.map(getScannerLabel))).sort((left, right) => left.localeCompare(right))
+  ), [checkIns]);
+
+  const categoryOptions = useMemo(() => (
+    Array.from(new Set(checkIns.map((checkIn) => checkIn.participant.category)))
+      .sort((left, right) => formatAdminCategory(left).localeCompare(formatAdminCategory(right)))
+  ), [checkIns]);
+
+  const filteredCheckIns = useMemo(() => {
+    if (accessMode) return checkIns;
+
+    const normalizedSearch = participationFilters.search.trim().toLowerCase();
+    const fromTime = participationFilters.dateFrom
+      ? new Date(`${participationFilters.dateFrom}T00:00:00`).getTime()
+      : null;
+    const toTime = participationFilters.dateTo
+      ? new Date(`${participationFilters.dateTo}T23:59:59.999`).getTime()
+      : null;
+
+    return checkIns.filter((checkIn) => {
+      const participantName = `${checkIn.participant.firstName} ${checkIn.participant.surname}`;
+      const scannerLabel = getScannerLabel(checkIn);
+      const scannedTime = new Date(checkIn.scannedAt).getTime();
+      const matchesSearch = !normalizedSearch || [
+        participantName,
+        checkIn.participant.email,
+        checkIn.registrationId,
+        scannerLabel,
+      ].some((value) => value.toLowerCase().includes(normalizedSearch));
+
+      return matchesSearch
+        && (
+          participationFilters.category === 'all'
+          || checkIn.participant.category === participationFilters.category
+        )
+        && (
+          participationFilters.attendeeType === 'all'
+          || checkIn.attendeeType === participationFilters.attendeeType
+        )
+        && (
+          participationFilters.scanSource === 'all'
+          || checkIn.scanSource === participationFilters.scanSource
+        )
+        && (
+          participationFilters.scanner === 'all'
+          || scannerLabel === participationFilters.scanner
+        )
+        && (fromTime === null || scannedTime >= fromTime)
+        && (toTime === null || scannedTime <= toTime);
+    });
+  }, [accessMode, checkIns, participationFilters]);
+
+  const displayedCheckInTotal = accessMode ? checkInTotal : filteredCheckIns.length;
+  const totalCheckInPages = Math.max(
+    1,
+    Math.ceil(displayedCheckInTotal / CHECK_IN_PAGE_SIZE),
+  );
+  const visibleCheckIns = accessMode
+    ? checkIns
+    : filteredCheckIns.slice(
+        (checkInPage - 1) * CHECK_IN_PAGE_SIZE,
+        checkInPage * CHECK_IN_PAGE_SIZE,
+      );
+  const filtersActive = Object.entries(participationFilters).some(([key, value]) => (
+    key === 'search' || key === 'dateFrom' || key === 'dateTo'
+      ? value !== ''
+      : value !== 'all'
+  ));
+
+  const participationReport = useMemo(() => {
+    const categories = new Map<string, number>();
+    const sources = new Map<string, number>();
+    const scanners = new Map<string, number>();
+    let primary = 0;
+    let spouses = 0;
+
+    filteredCheckIns.forEach((checkIn) => {
+      categories.set(
+        checkIn.participant.category,
+        (categories.get(checkIn.participant.category) || 0) + 1,
+      );
+      sources.set(checkIn.scanSource, (sources.get(checkIn.scanSource) || 0) + 1);
+      const scanner = getScannerLabel(checkIn);
+      scanners.set(scanner, (scanners.get(scanner) || 0) + 1);
+      if (checkIn.attendeeType === 'spouse') spouses += 1;
+      else primary += 1;
+    });
+
+    return {
+      primary,
+      spouses,
+      categories: Array.from(categories.entries()).sort((left, right) => right[1] - left[1]),
+      sources: Array.from(sources.entries()).sort((left, right) => right[1] - left[1]),
+      scanners: Array.from(scanners.entries()).sort((left, right) => right[1] - left[1]),
+    };
+  }, [filteredCheckIns]);
+
+  useEffect(() => {
+    if (!accessMode) setCheckInPage(1);
+  }, [accessMode, participationFilters]);
+
+  useEffect(() => {
+    if (checkInPage > totalCheckInPages) setCheckInPage(totalCheckInPages);
+  }, [checkInPage, totalCheckInPages]);
+
+  const exportFilteredCheckIns = () => {
+    const rows: Array<Array<string | number>> = [[
+      'Registration ID',
+      'Participant',
+      'Email',
+      'Attendee type',
+      'Registration category',
+      'Checked in at',
+      'Scanner name',
+      'Scanner email',
+      'Scan source',
+    ]];
+    filteredCheckIns.forEach((checkIn) => {
+      rows.push([
+        checkIn.registrationId,
+        `${checkIn.participant.firstName} ${checkIn.participant.surname}`.trim(),
+        checkIn.participant.email,
+        formatAttendeeType(checkIn.attendeeType),
+        formatAdminCategory(checkIn.participant.category),
+        new Date(checkIn.scannedAt).toISOString(),
+        checkIn.scannerName || '',
+        checkIn.scannerEmail || '',
+        formatScanSource(checkIn.scanSource),
+      ]);
+    });
+    downloadCsv(
+      `cmda-filtered-check-ins-${new Date().toISOString().slice(0, 10)}.csv`,
+      rows,
+    );
+  };
+
+  const exportParticipationReport = () => {
+    const rows: Array<Array<string | number>> = [
+      ['CMDA participation report', 'Value'],
+      ['Generated at', new Date().toISOString()],
+      ['Filtered check-ins', filteredCheckIns.length],
+      ['Primary registrants', participationReport.primary],
+      ['Spouses', participationReport.spouses],
+      ['', ''],
+      ['Category breakdown', 'Check-ins'],
+      ...participationReport.categories.map(([category, count]) => [
+        formatAdminCategory(category),
+        count,
+      ]),
+      ['', ''],
+      ['Scan source breakdown', 'Check-ins'],
+      ...participationReport.sources.map(([source, count]) => [
+        formatScanSource(source as ParticipationCheckIn['scanSource']),
+        count,
+      ]),
+      ['', ''],
+      ['Scanner breakdown', 'Check-ins'],
+      ...participationReport.scanners,
+    ];
+    downloadCsv(
+      `cmda-participation-report-${new Date().toISOString().slice(0, 10)}.csv`,
+      rows,
+    );
+  };
 
   const playFeedback = useCallback(async (kind: 'success' | 'duplicate' | 'error') => {
     if ('vibrate' in navigator) {
@@ -667,6 +916,127 @@ const Scanner = ({ accessMode = false, onSessionInvalid }: ScannerProps) => {
         </Card>
       </div>
 
+      {!accessMode ? (
+        <Card className="min-w-0 border-slate-200">
+          <CardHeader className="pb-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-base text-slate-900">
+                  <BarChart3 className="h-4 w-4" />
+                  Participation Report
+                </CardTitle>
+                <p className="mt-1 text-sm text-slate-500">
+                  Live summary of the records matching the filters below
+                </p>
+              </div>
+              <div className="grid grid-cols-1 gap-2 sm:flex">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={loadingCheckIns || Boolean(checkInLoadError) || filteredCheckIns.length === 0}
+                  onClick={exportParticipationReport}
+                >
+                  <Download className="mr-1.5 h-4 w-4" />
+                  Export Report
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={loadingCheckIns || Boolean(checkInLoadError) || filteredCheckIns.length === 0}
+                  onClick={exportFilteredCheckIns}
+                >
+                  <Download className="mr-1.5 h-4 w-4" />
+                  Export Filtered Records
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {checkInLoadError ? (
+              <Alert variant="destructive" role="alert">
+                <XCircle className="h-4 w-4" />
+                <AlertDescription>{checkInLoadError}</AlertDescription>
+              </Alert>
+            ) : null}
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Check-ins</p>
+                <p className="mt-1 text-2xl font-bold text-slate-900">
+                  {formatAdminNumber(filteredCheckIns.length)}
+                </p>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Primary</p>
+                <p className="mt-1 text-2xl font-bold text-slate-900">
+                  {formatAdminNumber(participationReport.primary)}
+                </p>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Spouses</p>
+                <p className="mt-1 text-2xl font-bold text-slate-900">
+                  {formatAdminNumber(participationReport.spouses)}
+                </p>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Scanners</p>
+                <p className="mt-1 text-2xl font-bold text-slate-900">
+                  {formatAdminNumber(participationReport.scanners.length)}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid gap-3 lg:grid-cols-3">
+              <div className="rounded-lg border border-slate-200 p-4">
+                <h3 className="text-sm font-semibold text-slate-900">By category</h3>
+                <div className="mt-3 space-y-2">
+                  {participationReport.categories.length === 0 ? (
+                    <p className="text-sm text-slate-500">No matching records</p>
+                  ) : participationReport.categories.map(([category, count]) => (
+                    <div key={category} className="flex items-center justify-between gap-3 text-sm">
+                      <span className="min-w-0 truncate text-slate-600">
+                        {formatAdminCategory(category)}
+                      </span>
+                      <span className="font-semibold text-slate-900">{formatAdminNumber(count)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-slate-200 p-4">
+                <h3 className="text-sm font-semibold text-slate-900">By scan method</h3>
+                <div className="mt-3 space-y-2">
+                  {participationReport.sources.length === 0 ? (
+                    <p className="text-sm text-slate-500">No matching records</p>
+                  ) : participationReport.sources.map(([source, count]) => (
+                    <div key={source} className="flex items-center justify-between gap-3 text-sm">
+                      <span className="text-slate-600">
+                        {formatScanSource(source as ParticipationCheckIn['scanSource'])}
+                      </span>
+                      <span className="font-semibold text-slate-900">{formatAdminNumber(count)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-slate-200 p-4">
+                <h3 className="text-sm font-semibold text-slate-900">By scanner</h3>
+                <div className="mt-3 max-h-44 space-y-2 overflow-y-auto">
+                  {participationReport.scanners.length === 0 ? (
+                    <p className="text-sm text-slate-500">No matching records</p>
+                  ) : participationReport.scanners.map(([scanner, count]) => (
+                    <div key={scanner} className="flex items-center justify-between gap-3 text-sm">
+                      <span className="min-w-0 truncate text-slate-600">{scanner}</span>
+                      <span className="font-semibold text-slate-900">{formatAdminNumber(count)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
       <Card className="min-w-0 border-slate-200">
         <CardHeader className="pb-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -678,7 +1048,11 @@ const Scanner = ({ accessMode = false, onSessionInvalid }: ScannerProps) => {
               <p className="mt-1 text-sm text-slate-500">
                 {loadingCheckIns
                   ? 'Loading check-ins…'
-                  : `${formatAdminNumber(checkInTotal)} participants checked in`}
+                  : checkInLoadError
+                    ? 'Participation records unavailable'
+                    : filtersActive && !accessMode
+                      ? `${formatAdminNumber(displayedCheckInTotal)} of ${formatAdminNumber(checkInTotal)} check-ins match`
+                      : `${formatAdminNumber(displayedCheckInTotal)} participants checked in`}
               </p>
             </div>
             <Button
@@ -694,18 +1068,140 @@ const Scanner = ({ accessMode = false, onSessionInvalid }: ScannerProps) => {
           </div>
         </CardHeader>
         <CardContent>
-          {loadingCheckIns ? (
+          {!accessMode ? (
+            <div className="mb-5 space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-3 sm:p-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">Filter participation records</p>
+                  <p className="text-xs text-slate-500">
+                    The report, table, and exports update together.
+                  </p>
+                </div>
+                {filtersActive ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setParticipationFilters(EMPTY_PARTICIPATION_FILTERS)}
+                  >
+                    Clear filters
+                  </Button>
+                ) : null}
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                <label className="relative md:col-span-2">
+                  <span className="sr-only">Search participation records</span>
+                  <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                  <Input
+                    value={participationFilters.search}
+                    onChange={(event) => updateParticipationFilter('search', event.target.value)}
+                    placeholder="Search participant, email, registration ID, or scanner"
+                    className="bg-white pl-9"
+                  />
+                </label>
+
+                <label>
+                  <span className="mb-1 block text-xs font-medium text-slate-600">Category</span>
+                  <select
+                    value={participationFilters.category}
+                    onChange={(event) => updateParticipationFilter('category', event.target.value)}
+                    className="h-10 w-full rounded-md border border-input bg-white px-3 text-sm"
+                  >
+                    <option value="all">All categories</option>
+                    {categoryOptions.map((category) => (
+                      <option key={category} value={category}>
+                        {formatAdminCategory(category)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label>
+                  <span className="mb-1 block text-xs font-medium text-slate-600">Attendee</span>
+                  <select
+                    value={participationFilters.attendeeType}
+                    onChange={(event) => updateParticipationFilter('attendeeType', event.target.value)}
+                    className="h-10 w-full rounded-md border border-input bg-white px-3 text-sm"
+                  >
+                    <option value="all">Doctor and spouse</option>
+                    <option value="primary">Primary registrants</option>
+                    <option value="spouse">Spouses</option>
+                  </select>
+                </label>
+
+                <label>
+                  <span className="mb-1 block text-xs font-medium text-slate-600">Scan method</span>
+                  <select
+                    value={participationFilters.scanSource}
+                    onChange={(event) => updateParticipationFilter('scanSource', event.target.value)}
+                    className="h-10 w-full rounded-md border border-input bg-white px-3 text-sm"
+                  >
+                    <option value="all">All scan methods</option>
+                    <option value="qr">Camera QR</option>
+                    <option value="image_upload">QR image</option>
+                    <option value="manual">Manual ID</option>
+                    <option value="legacy">Previous records</option>
+                  </select>
+                </label>
+
+                <label>
+                  <span className="mb-1 block text-xs font-medium text-slate-600">Scanner</span>
+                  <select
+                    value={participationFilters.scanner}
+                    onChange={(event) => updateParticipationFilter('scanner', event.target.value)}
+                    className="h-10 w-full rounded-md border border-input bg-white px-3 text-sm"
+                  >
+                    <option value="all">All scanners</option>
+                    {scannerOptions.map((scanner) => (
+                      <option key={scanner} value={scanner}>{scanner}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label>
+                  <span className="mb-1 block text-xs font-medium text-slate-600">From date</span>
+                  <Input
+                    type="date"
+                    value={participationFilters.dateFrom}
+                    onChange={(event) => updateParticipationFilter('dateFrom', event.target.value)}
+                    className="bg-white"
+                  />
+                </label>
+
+                <label>
+                  <span className="mb-1 block text-xs font-medium text-slate-600">To date</span>
+                  <Input
+                    type="date"
+                    value={participationFilters.dateTo}
+                    min={participationFilters.dateFrom || undefined}
+                    onChange={(event) => updateParticipationFilter('dateTo', event.target.value)}
+                    className="bg-white"
+                  />
+                </label>
+              </div>
+            </div>
+          ) : null}
+
+          {checkInLoadError ? (
+            <Alert variant="destructive" role="alert">
+              <XCircle className="h-4 w-4" />
+              <AlertDescription>{checkInLoadError}</AlertDescription>
+            </Alert>
+          ) : loadingCheckIns ? (
             <div className="flex justify-center py-10">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-slate-700" />
             </div>
-          ) : checkIns.length === 0 ? (
+          ) : visibleCheckIns.length === 0 ? (
             <div className="py-10 text-center text-sm text-slate-500">
-              No participation has been recorded yet.
+              {filtersActive
+                ? 'No participation records match the selected filters.'
+                : 'No participation has been recorded yet.'}
             </div>
           ) : (
             <>
               <div className="space-y-3 md:hidden">
-                {checkIns.map((checkIn) => (
+                {visibleCheckIns.map((checkIn) => (
                   <article key={checkIn.id} className="rounded-lg border border-slate-200 p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
@@ -749,7 +1245,7 @@ const Scanner = ({ accessMode = false, onSessionInvalid }: ScannerProps) => {
                     </tr>
                   </thead>
                   <tbody>
-                    {checkIns.map((checkIn) => (
+                    {visibleCheckIns.map((checkIn) => (
                       <tr key={checkIn.id} className="border-b border-slate-100 last:border-0">
                         <td className="px-4 py-2.5">
                           <p className="font-medium text-slate-900">
